@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <title>Word Counter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Word Counter</h1>
+            <p class="subtitle">Capture, Select, Count</p>
+        </header>
+
+        <main>
+            <!-- API Key Setup Section -->
+            <section id="setup-section" class="section active">
+                <div class="setup-container">
+                    <h2>Setup Required</h2>
+                    <p class="setup-description">
+                        This app uses Google Cloud Vision API for highly accurate word detection (99%+ accuracy).
+                    </p>
+                    <div class="setup-steps">
+                        <h3>Quick Setup (2 minutes):</h3>
+                        <ol>
+                            <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a></li>
+                            <li>Create a new API key</li>
+                            <li>Enable "Cloud Vision API"</li>
+                            <li>Paste your API key below</li>
+                        </ol>
+                        <p class="note">Free tier: 1,000 requests/month</p>
+                    </div>
+                    <div class="api-key-input">
+                        <input type="password" id="api-key" placeholder="Enter your Google Cloud Vision API key" />
+                        <button id="save-api-key-btn" class="btn btn-primary">Save & Start</button>
+                    </div>
+                    <p class="privacy-note">Your API key is stored locally in your browser only.</p>
+                </div>
+            </section>
+
+            <!-- Camera Section -->
+            <section id="camera-section" class="section">
+                <div class="camera-container">
+                    <video id="camera" autoplay playsinline></video>
+                    <canvas id="camera-canvas" style="display: none;"></canvas>
+                </div>
+                <div class="controls">
+                    <button id="capture-btn" class="btn btn-primary">
+                        <span class="icon">📷</span> Capture Photo
+                    </button>
+                </div>
+            </section>
+
+            <!-- Image Processing Section -->
+            <section id="image-section" class="section">
+                <div class="image-container">
+                    <canvas id="selection-canvas"></canvas>
+                </div>
+                <div class="word-count-display">
+                    <h2 id="word-count">0</h2>
+                    <p>words selected</p>
+                </div>
+                <div class="controls">
+                    <button id="retake-btn" class="btn btn-secondary">
+                        <span class="icon">🔄</span> Retake Photo
+                    </button>
+                    <button id="reset-selection-btn" class="btn btn-secondary">
+                        <span class="icon">✖️</span> Clear Selection
+                    </button>
+                </div>
+                <div id="status" class="status"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p class="hint">👆 Drag from first word to last word to count</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

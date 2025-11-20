@@ -33,6 +33,19 @@ header h1 {
     margin: 0;
 }
 
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.subtitle {
+    font-size: 0.75rem;
+    color: #999;
+    margin: 0;
+    font-weight: 400;
+}
+
 .word-count-header {
     color: #667eea;
     font-size: 0.9rem;

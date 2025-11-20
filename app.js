@@ -229,10 +229,11 @@ async function processOCR() {
 function drawImageWithWords() {
     const img = new Image();
     img.onload = function() {
-        selectionCanvas.width = img.width;
-        selectionCanvas.height = img.height;
+        const canvas = document.getElementById('selection-canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
 
-        const ctx = selectionCanvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
 
         // Draw word boundaries (green boxes for all detected words)
@@ -251,36 +252,34 @@ function drawImageWithWords() {
     img.src = state.capturedImage;
 }
 
+// Track if listeners are already attached
+let listenersAttached = false;
+
 // Setup Canvas Touch/Mouse Interaction
 function setupCanvasInteraction() {
     const canvas = document.getElementById('selection-canvas');
 
-    // Remove old listeners by cloning, but preserve the canvas content
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(canvas, 0, 0);
-
-    // Replace canvas with clone
-    canvas.replaceWith(canvas.cloneNode(true));
-    const newCanvas = document.getElementById('selection-canvas');
-
-    // Restore the content
-    newCanvas.width = tempCanvas.width;
-    newCanvas.height = tempCanvas.height;
-    const ctx = newCanvas.getContext('2d');
-    ctx.drawImage(tempCanvas, 0, 0);
+    // Remove old listeners if they exist
+    if (listenersAttached) {
+        canvas.removeEventListener('touchstart', handleStart);
+        canvas.removeEventListener('touchmove', handleMove);
+        canvas.removeEventListener('touchend', handleEnd);
+        canvas.removeEventListener('mousedown', handleStart);
+        canvas.removeEventListener('mousemove', handleMove);
+        canvas.removeEventListener('mouseup', handleEnd);
+    }
 
     // Touch events
-    newCanvas.addEventListener('touchstart', handleStart, { passive: false });
-    newCanvas.addEventListener('touchmove', handleMove, { passive: false });
-    newCanvas.addEventListener('touchend', handleEnd, { passive: false });
+    canvas.addEventListener('touchstart', handleStart, { passive: false });
+    canvas.addEventListener('touchmove', handleMove, { passive: false });
+    canvas.addEventListener('touchend', handleEnd, { passive: false });
 
     // Mouse events
-    newCanvas.addEventListener('mousedown', handleStart);
-    newCanvas.addEventListener('mousemove', handleMove);
-    newCanvas.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleEnd);
+
+    listenersAttached = true;
 }
 
 function handleStart(e) {

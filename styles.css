@@ -326,10 +326,16 @@ footer {
         margin-right: -0.5rem;
         width: calc(100% + 1rem);
         margin-bottom: 0.75rem;
+        max-height: 45vh;
     }
 
     #selection-canvas {
-        max-height: none;
+        max-height: 45vh;
+        object-fit: contain;
+    }
+
+    #camera {
+        max-height: 45vh;
     }
 }
 

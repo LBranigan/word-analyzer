@@ -22,6 +22,8 @@ const saveApiKeyBtn = document.getElementById('save-api-key-btn');
 const captureBtn = document.getElementById('capture-btn');
 const retakeBtn = document.getElementById('retake-btn');
 const resetSelectionBtn = document.getElementById('reset-selection-btn');
+const exportBtn = document.getElementById('export-btn');
+const exportOutput = document.getElementById('export-output');
 const wordCountDisplay = document.getElementById('word-count');
 const statusDisplay = document.getElementById('status');
 
@@ -39,6 +41,7 @@ function init() {
     captureBtn.addEventListener('click', capturePhoto);
     retakeBtn.addEventListener('click', retakePhoto);
     resetSelectionBtn.addEventListener('click', resetSelection);
+    exportBtn.addEventListener('click', exportSelectedWords);
 }
 
 // Save API Key
@@ -496,6 +499,49 @@ function retakePhoto() {
 function showStatus(message, type = '') {
     statusDisplay.textContent = message;
     statusDisplay.className = 'status ' + type;
+}
+
+function exportSelectedWords() {
+    if (!state.ocrData || !state.ocrData.words || state.selectedWords.size === 0) {
+        exportOutput.innerHTML = `
+            <h3>No Words Selected</h3>
+            <p style="color: #666;">Please select words by dragging from the first word to the last word.</p>
+        `;
+        exportOutput.classList.add('active');
+        return;
+    }
+
+    // Get selected words in order
+    const selectedIndices = Array.from(state.selectedWords).sort((a, b) => a - b);
+    const selectedWordTexts = selectedIndices.map(index => state.ocrData.words[index].text);
+
+    // Create plain text output
+    const plainText = selectedWordTexts.join(' ');
+
+    // Create detailed output showing each word
+    const wordListHtml = selectedWordTexts.map((word, index) => {
+        return `${index + 1}. "${word}"`;
+    }).join('\n');
+
+    exportOutput.innerHTML = `
+        <h3>Selected Words (${state.selectedWords.size} total)</h3>
+        <div class="word-list">${wordListHtml}</div>
+        <div class="export-info">
+            <strong>How counting works:</strong><br>
+            Each detected word is counted as 1, even if it contains punctuation or numbers.<br>
+            Words are selected in order from index ${selectedIndices[0]} to ${selectedIndices[selectedIndices.length - 1]}.
+        </div>
+        <div class="export-info">
+            <strong>Plain text:</strong><br>
+            <div class="word-list">${plainText}</div>
+        </div>
+    `;
+    exportOutput.classList.add('active');
+
+    console.log('=== EXPORT DEBUG ===');
+    console.log('Total selected indices:', state.selectedWords.size);
+    console.log('Selected indices:', selectedIndices);
+    console.log('Selected words:', selectedWordTexts);
 }
 
 // Initialize on load

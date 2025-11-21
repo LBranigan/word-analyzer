@@ -23,6 +23,20 @@
         </header>
 
         <main>
+            <!-- Audio Playback Section (Always visible when active) -->
+            <section id="audio-playback-section" class="audio-playback-container">
+                <h3>Recorded Audio</h3>
+                <audio id="audio-player" controls></audio>
+                <div class="audio-actions">
+                    <button id="download-audio-btn" class="btn btn-secondary">
+                        <span class="icon">💾</span> Download Audio
+                    </button>
+                    <button id="analyze-audio-btn" class="btn btn-primary">
+                        <span class="icon">🔍</span> Analyze Audio
+                    </button>
+                </div>
+            </section>
+
             <!-- API Key Setup Section -->
             <section id="setup-section" class="section active">
                 <div class="setup-container">
@@ -97,20 +111,6 @@
                         <span class="icon">📋</span> Export Selected Words
                     </button>
                     <div id="export-output" class="export-output"></div>
-                </div>
-            </section>
-
-            <!-- Audio Playback Section -->
-            <section id="audio-playback-section" class="audio-playback-container">
-                <h3>Recorded Audio</h3>
-                <audio id="audio-player" controls></audio>
-                <div class="audio-actions">
-                    <button id="download-audio-btn" class="btn btn-secondary">
-                        <span class="icon">💾</span> Download Audio
-                    </button>
-                    <button id="analyze-audio-btn" class="btn btn-primary">
-                        <span class="icon">🔍</span> Analyze Audio
-                    </button>
                 </div>
             </section>
         </main>

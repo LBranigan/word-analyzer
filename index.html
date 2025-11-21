@@ -62,6 +62,11 @@
                         <span class="icon">📁</span> Upload Photo
                     </button>
                 </div>
+                <div class="controls">
+                    <button id="record-audio-btn" class="btn btn-audio">
+                        <span class="icon">🎤</span> Record Audio
+                    </button>
+                </div>
                 <input type="file" id="file-input-camera" accept="image/*" style="display: none;">
             </section>
 
@@ -97,6 +102,34 @@
         <footer>
             <p class="hint">👆 Drag from first word to last word to count</p>
         </footer>
+    </div>
+
+    <!-- Audio Recording Modal -->
+    <div id="audio-modal" class="modal">
+        <div class="modal-content">
+            <h2>Record Audio</h2>
+            <p>How many minutes would you like to record?</p>
+            <div class="duration-input">
+                <input type="number" id="audio-duration" min="1" max="5" value="1" />
+                <span>minutes (max 5)</span>
+            </div>
+            <div class="modal-buttons">
+                <button id="start-recording-btn" class="btn btn-primary">Start Recording</button>
+                <button id="cancel-recording-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recording Status Modal -->
+    <div id="recording-modal" class="modal">
+        <div class="modal-content recording-active">
+            <h2>🎤 Recording...</h2>
+            <div class="recording-timer" id="recording-timer">00:00</div>
+            <div class="recording-progress">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <button id="stop-recording-btn" class="btn btn-danger">Stop Recording</button>
+        </div>
     </div>
 
     <script src="app.js"></script>

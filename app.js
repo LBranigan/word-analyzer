@@ -7,7 +7,14 @@ const state = {
     selectedWords: new Set(),
     isDrawing: false,
     startPoint: null,
-    endPoint: null
+    endPoint: null,
+    // Audio recording state
+    audioStream: null,
+    mediaRecorder: null,
+    audioChunks: [],
+    recordingTimer: null,
+    recordingStartTime: null,
+    recordingDuration: 0
 };
 
 // DOM Elements
@@ -31,6 +38,17 @@ const fileInputImage = document.getElementById('file-input-image');
 const wordCountDisplay = document.getElementById('word-count');
 const statusDisplay = document.getElementById('status');
 
+// Audio Recording Elements
+const recordAudioBtn = document.getElementById('record-audio-btn');
+const audioModal = document.getElementById('audio-modal');
+const recordingModal = document.getElementById('recording-modal');
+const audioDurationInput = document.getElementById('audio-duration');
+const startRecordingBtn = document.getElementById('start-recording-btn');
+const cancelRecordingBtn = document.getElementById('cancel-recording-btn');
+const stopRecordingBtn = document.getElementById('stop-recording-btn');
+const recordingTimer = document.getElementById('recording-timer');
+const progressBar = document.getElementById('progress-bar');
+
 // Initialize
 function init() {
     // Check if API key is already saved
@@ -50,6 +68,12 @@ function init() {
     uploadBtnImage.addEventListener('click', () => fileInputImage.click());
     fileInputCamera.addEventListener('change', handleFileUpload);
     fileInputImage.addEventListener('change', handleFileUpload);
+
+    // Audio recording event listeners
+    recordAudioBtn.addEventListener('click', openAudioModal);
+    startRecordingBtn.addEventListener('click', startRecording);
+    cancelRecordingBtn.addEventListener('click', closeAudioModal);
+    stopRecordingBtn.addEventListener('click', stopRecording);
 }
 
 // Save API Key
@@ -591,6 +615,123 @@ function exportSelectedWords() {
     console.log('Total selected indices:', state.selectedWords.size);
     console.log('Selected indices:', selectedIndices);
     console.log('Selected words:', selectedWordTexts);
+}
+
+// Audio Recording Functions
+function openAudioModal() {
+    audioModal.classList.add('active');
+}
+
+function closeAudioModal() {
+    audioModal.classList.remove('active');
+}
+
+async function startRecording() {
+    const duration = parseInt(audioDurationInput.value);
+
+    if (duration < 1 || duration > 5) {
+        alert('Please enter a duration between 1 and 5 minutes');
+        return;
+    }
+
+    try {
+        // Request microphone access
+        state.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Initialize MediaRecorder
+        state.mediaRecorder = new MediaRecorder(state.audioStream);
+        state.audioChunks = [];
+        state.recordingDuration = duration * 60; // Convert to seconds
+
+        // Collect audio data
+        state.mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                state.audioChunks.push(event.data);
+            }
+        };
+
+        // Handle recording stop
+        state.mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+            downloadAudio(audioBlob);
+
+            // Clean up
+            if (state.audioStream) {
+                state.audioStream.getTracks().forEach(track => track.stop());
+            }
+            state.audioStream = null;
+            state.mediaRecorder = null;
+            state.audioChunks = [];
+        };
+
+        // Start recording
+        state.mediaRecorder.start();
+        state.recordingStartTime = Date.now();
+
+        // Close duration modal and show recording modal
+        closeAudioModal();
+        recordingModal.classList.add('active');
+
+        // Start timer
+        updateRecordingTimer();
+
+        // Auto-stop after duration
+        setTimeout(() => {
+            if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+                stopRecording();
+            }
+        }, state.recordingDuration * 1000);
+
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        alert('Could not access microphone. Please check permissions.');
+    }
+}
+
+function stopRecording() {
+    if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+        state.mediaRecorder.stop();
+        clearInterval(state.recordingTimer);
+        recordingModal.classList.remove('active');
+    }
+}
+
+function updateRecordingTimer() {
+    state.recordingTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+        const remaining = state.recordingDuration - elapsed;
+
+        if (remaining <= 0) {
+            clearInterval(state.recordingTimer);
+            return;
+        }
+
+        // Update timer display
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        recordingTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        // Update progress bar
+        const progress = (elapsed / state.recordingDuration) * 100;
+        progressBar.style.width = `${progress}%`;
+    }, 100);
+}
+
+function downloadAudio(audioBlob) {
+    const url = URL.createObjectURL(audioBlob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `recording-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+
+    alert('Recording complete! Your audio file has been downloaded.');
 }
 
 // Initialize on load

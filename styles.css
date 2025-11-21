@@ -95,7 +95,7 @@ main {
     max-height: 50vh;
     margin: 0 auto 1rem;
     border-radius: 8px;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     background: #fff;
     position: relative;
@@ -108,7 +108,7 @@ main {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    z-index: 10;
+    z-index: 100;
 }
 
 .zoom-btn {
@@ -144,6 +144,7 @@ main {
     display: block;
     touch-action: pan-y;
     cursor: crosshair;
+    border-radius: 8px;
 }
 
 .controls {

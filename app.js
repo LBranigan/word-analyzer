@@ -378,6 +378,12 @@ function setupCanvasInteraction() {
     canvas.addEventListener('mousemove', handleMove);
     canvas.addEventListener('mouseup', handleEnd);
 
+    // Prevent context menu on right-click (for panning)
+    canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        return false;
+    });
+
     // Click event for deselecting words
     canvas.addEventListener('click', handleWordClick);
 
@@ -398,21 +404,24 @@ function handleWordClick(e) {
 }
 
 function handleStart(e) {
-    e.preventDefault();
-
-    // Check if spacebar is pressed or right mouse button for panning
+    // Check if right mouse button for panning (do this BEFORE preventDefault)
     if (e.button === 2 || e.shiftKey) {
+        e.preventDefault();
         state.isPanning = true;
-        state.panStartPoint = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY };
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        state.panStartPoint = { x: clientX, y: clientY };
+        console.log('Started panning at:', state.panStartPoint);
         return;
     }
 
+    e.preventDefault();
     state.isDrawing = true;
     state.wasDragged = false;
     state.startPoint = getCanvasPoint(e);
     state.endPoint = state.startPoint;
 
-    console.log('Started at:', state.startPoint);
+    console.log('Started drawing at:', state.startPoint);
 }
 
 function handleMove(e) {

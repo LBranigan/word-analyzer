@@ -103,35 +103,41 @@ main {
 
 .zoom-controls {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: 15px;
+    right: 15px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    z-index: 100;
+    gap: 8px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .zoom-btn {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    border: 2px solid #667eea;
+    border: 3px solid #667eea;
     background: white;
     color: #667eea;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
     transition: all 0.2s ease;
+    line-height: 1;
 }
 
 .zoom-btn:hover {
     background: #667eea;
     color: white;
-    transform: scale(1.1);
+    transform: scale(1.15);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
 }
 
 .zoom-btn:active {

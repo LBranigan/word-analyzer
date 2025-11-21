@@ -98,6 +98,9 @@
 
             <!-- Image Processing Section -->
             <section id="image-section" class="section">
+                <div class="section-header">
+                    <h3>📸 Image Controls</h3>
+                </div>
                 <div class="image-wrapper">
                     <div class="image-container">
                         <canvas id="selection-canvas"></canvas>
@@ -110,6 +113,15 @@
                         <div class="pan-hint">Right-click<br>to pan</div>
                     </div>
                 </div>
+
+                <!-- Audio Recording -->
+                <div class="controls">
+                    <button id="record-audio-btn-image" class="btn btn-audio">
+                        <span class="icon">🎤</span> Record Audio
+                    </button>
+                </div>
+
+                <!-- Image Controls -->
                 <div class="controls">
                     <button id="retake-btn" class="btn btn-secondary">
                         <span class="icon">🔄</span> Retake Photo
@@ -118,6 +130,8 @@
                         <span class="icon">📁</span> Upload Photo
                     </button>
                 </div>
+
+                <!-- Zoom Controls -->
                 <div class="controls zoom-controls-row">
                     <button id="zoom-in-btn-2" class="btn btn-zoom">
                         <span class="icon">🔍+</span> Zoom In
@@ -129,11 +143,8 @@
                         <span class="icon">⟲</span> Reset View
                     </button>
                 </div>
-                <div class="controls">
-                    <button id="record-audio-btn-image" class="btn btn-audio">
-                        <span class="icon">🎤</span> Record Audio
-                    </button>
-                </div>
+
+                <!-- Selection Controls -->
                 <div class="controls">
                     <button id="reset-selection-btn" class="btn btn-secondary">
                         <span class="icon">✖️</span> Clear Selection

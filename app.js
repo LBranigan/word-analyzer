@@ -1007,12 +1007,17 @@ async function analyzeRecordedAudio() {
             data.results.forEach(result => {
                 if (result.alternatives && result.alternatives[0].words) {
                     result.alternatives[0].words.forEach(wordData => {
-                        wordInfo.push({
-                            word: wordData.word,
-                            confidence: wordData.confidence || 1.0,
-                            startTime: wordData.startTime,
-                            endTime: wordData.endTime
-                        });
+                        // Validate that wordData has a word property before adding
+                        if (wordData && wordData.word) {
+                            wordInfo.push({
+                                word: wordData.word,
+                                confidence: wordData.confidence || 1.0,
+                                startTime: wordData.startTime,
+                                endTime: wordData.endTime
+                            });
+                        } else {
+                            console.warn('Skipping incomplete word data:', wordData);
+                        }
                     });
                 }
             });

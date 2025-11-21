@@ -1092,10 +1092,55 @@ function levenshteinDistance(str1, str2) {
     return matrix[len1][len2];
 }
 
-// Normalize word for comparison (remove punctuation, lowercase)
+// Convert digit to word form
+function digitToWord(digit) {
+    const numberWords = {
+        '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
+        '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine',
+        '10': 'ten', '11': 'eleven', '12': 'twelve', '13': 'thirteen',
+        '14': 'fourteen', '15': 'fifteen', '16': 'sixteen', '17': 'seventeen',
+        '18': 'eighteen', '19': 'nineteen', '20': 'twenty', '30': 'thirty',
+        '40': 'forty', '50': 'fifty', '60': 'sixty', '70': 'seventy',
+        '80': 'eighty', '90': 'ninety', '100': 'hundred', '1000': 'thousand'
+    };
+    return numberWords[digit] || digit;
+}
+
+// Convert word to digit form
+function wordToDigit(word) {
+    const wordNumbers = {
+        'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+        'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+        'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
+        'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
+        'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
+        'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
+        'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000'
+    };
+    return wordNumbers[word] || word;
+}
+
+// Normalize word for comparison (remove punctuation, lowercase, handle numbers)
 function normalizeWord(word) {
     if (!word || typeof word !== 'string') return '';
-    return word.toLowerCase().replace(/[^\w]/g, '');
+
+    // Remove punctuation and lowercase
+    let normalized = word.toLowerCase().replace(/[^\w]/g, '');
+
+    // If it's a digit, try to convert to word form
+    if (/^\d+$/.test(normalized)) {
+        const asWord = digitToWord(normalized);
+        return asWord;
+    }
+
+    // If it's a number word, try to convert to digit form then back
+    // This ensures "ten" and "10" both normalize to "ten"
+    const asDigit = wordToDigit(normalized);
+    if (asDigit !== normalized && /^\d+$/.test(asDigit)) {
+        return digitToWord(asDigit);
+    }
+
+    return normalized;
 }
 
 // Check if two words are similar enough (allowing for minor pronunciation differences)

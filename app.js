@@ -780,10 +780,9 @@ async function startRecording() {
     }
 
     try {
-        // Request microphone access with lower sample rate for smaller file size
+        // Request microphone access with audio optimizations
         state.audioStream = await navigator.mediaDevices.getUserMedia({
             audio: {
-                sampleRate: 16000,  // Lower sample rate for speech (reduces file size)
                 channelCount: 1,    // Mono audio
                 echoCancellation: true,
                 noiseSuppression: true
@@ -950,7 +949,7 @@ async function analyzeRecordedAudio() {
                 const requestBody = {
                     config: {
                         encoding: 'WEBM_OPUS',
-                        sampleRateHertz: 16000,  // Match recording sample rate
+                        sampleRateHertz: 48000,  // Match browser's default recording rate
                         languageCode: 'en-US',
                         enableAutomaticPunctuation: true,
                         enableWordConfidence: true,

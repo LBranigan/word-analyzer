@@ -16,7 +16,11 @@ const state = {
     recordingTimer: null,
     recordingStartTime: null,
     recordingDuration: 0,
-    recordedAudioBlob: null
+    recordedAudioBlob: null,
+    // Analysis results
+    latestAnalysis: null,
+    latestExpectedWords: null,
+    latestSpokenWords: null
 };
 
 // DOM Elements
@@ -920,6 +924,11 @@ async function analyzeRecordedAudio() {
             // Analyze pronunciation by comparing expected vs spoken words
             const analysis = analyzePronunciation(expectedWords, wordInfo);
 
+            // Store analysis results for PDF export
+            state.latestAnalysis = analysis;
+            state.latestExpectedWords = expectedWords;
+            state.latestSpokenWords = wordInfo;
+
             // Display results with pronunciation analysis
             displayPronunciationResults(expectedWords, wordInfo, analysis);
 
@@ -1353,6 +1362,12 @@ function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
     exportOutput.innerHTML = `
         <h3>🎯 Pronunciation Analysis</h3>
         <div class="audio-analysis-result">
+            <div class="download-output-section">
+                <button id="download-output-btn" class="btn btn-export">
+                    <span class="icon">📄</span> Download Output (PDF)
+                </button>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-box stat-correct">
                     <div class="stat-number">${correctCount}</div>
@@ -1392,6 +1407,232 @@ function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
 
     // Update word count display
     wordCountDisplay.textContent = correctCount;
+
+    // Add event listener for download button
+    const downloadOutputBtn = document.getElementById('download-output-btn');
+    if (downloadOutputBtn) {
+        downloadOutputBtn.addEventListener('click', downloadAnalysisAsPDF);
+    }
+}
+
+// Generate and download analysis as PDF
+function downloadAnalysisAsPDF() {
+    if (!state.latestAnalysis || !state.latestExpectedWords) {
+        alert('No analysis data available');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const analysis = state.latestAnalysis;
+    const expectedWords = state.latestExpectedWords;
+    const totalWords = expectedWords.length;
+    const correctCount = analysis.correctCount;
+    const totalErrors = analysis.errors.skippedWords.length +
+                        analysis.errors.misreadWords.length +
+                        analysis.errors.substitutedWords.length;
+    const accuracy = ((correctCount / totalWords) * 100).toFixed(1);
+
+    let yPos = 20;
+    const pageWidth = doc.internal.pageSize.width;
+    const margin = 20;
+    const maxWidth = pageWidth - (margin * 2);
+
+    // Title
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('Pronunciation Analysis Report', margin, yPos);
+    yPos += 10;
+
+    // Date/Time
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, yPos);
+    doc.setTextColor(0);
+    yPos += 15;
+
+    // Statistics Section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Summary Statistics', margin, yPos);
+    yPos += 8;
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Total Words: ${totalWords}`, margin, yPos);
+    yPos += 6;
+    doc.text(`Correct: ${correctCount}`, margin, yPos);
+    yPos += 6;
+    doc.text(`Errors: ${totalErrors}`, margin, yPos);
+    yPos += 6;
+    doc.text(`Accuracy: ${accuracy}%`, margin, yPos);
+    yPos += 12;
+
+    // Error Breakdown
+    if (totalErrors > 0) {
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Error Breakdown', margin, yPos);
+        yPos += 8;
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+
+        if (analysis.errors.skippedWords.length > 0) {
+            doc.setFont(undefined, 'bold');
+            doc.text(`Skipped Words: ${analysis.errors.skippedWords.length}`, margin, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            const skippedText = 'Words not read aloud';
+            doc.text(skippedText, margin + 5, yPos);
+            yPos += 7;
+        }
+
+        if (analysis.errors.misreadWords.length > 0) {
+            doc.setFont(undefined, 'bold');
+            doc.text(`Misread Words: ${analysis.errors.misreadWords.length}`, margin, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            analysis.errors.misreadWords.forEach(e => {
+                const text = `"${e.expected}" -> "${e.spoken}"`;
+                const lines = doc.splitTextToSize(text, maxWidth - 5);
+                doc.text(lines, margin + 5, yPos);
+                yPos += 5 * lines.length;
+            });
+            yPos += 2;
+        }
+
+        if (analysis.errors.substitutedWords.length > 0) {
+            doc.setFont(undefined, 'bold');
+            doc.text(`Substituted Words: ${analysis.errors.substitutedWords.length}`, margin, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            analysis.errors.substitutedWords.forEach(e => {
+                const text = `"${e.expected}" -> "${e.spoken}"`;
+                const lines = doc.splitTextToSize(text, maxWidth - 5);
+                doc.text(lines, margin + 5, yPos);
+                yPos += 5 * lines.length;
+            });
+            yPos += 2;
+        }
+
+        if (analysis.errors.hesitations.length > 0) {
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFont(undefined, 'bold');
+            doc.text(`Hesitations: ${analysis.errors.hesitations.length}`, margin, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            const hesitationText = analysis.errors.hesitations.map(h =>
+                h.type === 'filler' ? `"${h.word}"` : `pause before "${h.word}"`
+            ).join(', ');
+            const hesLines = doc.splitTextToSize(hesitationText, maxWidth - 5);
+            doc.text(hesLines, margin + 5, yPos);
+            yPos += 5 * hesLines.length + 2;
+        }
+
+        if (analysis.errors.repeatedWords.length > 0) {
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFont(undefined, 'bold');
+            doc.text(`Repeated Words: ${analysis.errors.repeatedWords.length}`, margin, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            const repeatText = analysis.errors.repeatedWords.map(r => `"${r.word}"`).join(', ');
+            const repeatLines = doc.splitTextToSize(repeatText, maxWidth - 5);
+            doc.text(repeatLines, margin + 5, yPos);
+            yPos += 5 * repeatLines.length + 2;
+        }
+
+        if (analysis.errors.skippedLines.length > 0) {
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(220, 53, 69);
+            doc.text(`Skipped Lines: ${analysis.errors.skippedLines.length} (CRITICAL)`, margin, yPos);
+            doc.setTextColor(0);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            analysis.errors.skippedLines.forEach(l => {
+                doc.text(`${l.count} consecutive words skipped`, margin + 5, yPos);
+                yPos += 5;
+            });
+            yPos += 2;
+        }
+
+        if (analysis.errors.repeatedPhrases.length > 0) {
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFont(undefined, 'bold');
+            doc.text(`Repeated Phrases: ${analysis.errors.repeatedPhrases.length}`, margin, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'normal');
+            const phraseText = analysis.errors.repeatedPhrases.map(p => `"${p.phrase}"`).join(', ');
+            const phraseLines = doc.splitTextToSize(phraseText, maxWidth - 5);
+            doc.text(phraseLines, margin + 5, yPos);
+            yPos += 5 * phraseLines.length + 2;
+        }
+    }
+
+    // Word-by-Word Results
+    if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+    }
+
+    yPos += 5;
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Word-by-Word Analysis', margin, yPos);
+    yPos += 8;
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+
+    analysis.aligned.forEach((item, index) => {
+        if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        let status = '';
+        let color = [0, 0, 0];
+
+        if (item.status === 'correct') {
+            status = '✓';
+            color = [21, 87, 36];
+        } else if (item.status === 'skipped') {
+            status = 'SKIPPED';
+            color = [56, 61, 65];
+        } else if (item.status === 'misread') {
+            status = `MISREAD: "${item.spoken}"`;
+            color = [133, 100, 4];
+        } else if (item.status === 'substituted') {
+            status = `SUBSTITUTED: "${item.spoken}"`;
+            color = [114, 28, 36];
+        }
+
+        doc.setTextColor(...color);
+        const text = `${index + 1}. ${item.expected} ${status}`;
+        const lines = doc.splitTextToSize(text, maxWidth);
+        doc.text(lines, margin, yPos);
+        doc.setTextColor(0);
+        yPos += 5 * lines.length;
+    });
+
+    // Save PDF
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    doc.save(`pronunciation-analysis-${timestamp}.pdf`);
 }
 
 // Initialize on load

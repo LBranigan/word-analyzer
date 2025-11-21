@@ -788,43 +788,75 @@ async function analyzeRecordedAudio() {
         const reader = new FileReader();
         reader.readAsDataURL(state.recordedAudioBlob);
 
+        reader.onerror = () => {
+            console.error('File reader error:', reader.error);
+            showStatus('Error reading audio file. Please try recording again.', 'error');
+        };
+
         reader.onloadend = async () => {
-            const base64Audio = reader.result.split(',')[1];
+            try {
+                const base64Audio = reader.result.split(',')[1];
 
-            // Call Google Cloud Speech-to-Text API with word-level details
-            const response = await fetch(
-                `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                console.log('Audio blob size:', state.recordedAudioBlob.size);
+                console.log('Audio blob type:', state.recordedAudioBlob.type);
+                console.log('Base64 audio length:', base64Audio.length);
+
+                // Prepare API request
+                const requestBody = {
+                    config: {
+                        encoding: 'WEBM_OPUS',
+                        sampleRateHertz: 48000,
+                        languageCode: 'en-US',
+                        enableAutomaticPunctuation: true,
+                        enableWordConfidence: true,
+                        enableWordTimeOffsets: true,
                     },
-                    body: JSON.stringify({
-                        config: {
-                            encoding: 'WEBM_OPUS',
-                            sampleRateHertz: 48000,
-                            languageCode: 'en-US',
-                            enableAutomaticPunctuation: true,
-                            enableWordConfidence: true,
-                            enableWordTimeOffsets: true,
+                    audio: {
+                        content: base64Audio
+                    }
+                };
+
+                console.log('Sending request to Speech-to-Text API...');
+
+                // Call Google Cloud Speech-to-Text API with word-level details
+                const response = await fetch(
+                    `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
                         },
-                        audio: {
-                            content: base64Audio
-                        }
-                    })
+                        body: JSON.stringify(requestBody)
+                    }
+                );
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                console.log('API Response:', data);
+
+                if (data.error) {
+                    console.error('API Error:', data.error);
+                    let errorMessage = data.error.message || 'Unknown API error';
+
+                    // Check for common errors
+                    if (errorMessage.includes('API key')) {
+                        errorMessage = 'Invalid API key or Speech-to-Text API not enabled. Please enable the Cloud Speech-to-Text API in your Google Cloud Console.';
+                    } else if (errorMessage.includes('PERMISSION_DENIED')) {
+                        errorMessage = 'Speech-to-Text API is not enabled. Please enable it in Google Cloud Console.';
+                    } else if (errorMessage.includes('audio')) {
+                        errorMessage = 'Audio format error: ' + errorMessage;
+                    }
+
+                    throw new Error(errorMessage);
                 }
-            );
 
-            const data = await response.json();
-
-            if (data.error) {
-                throw new Error(data.error.message);
-            }
-
-            if (!data.results || data.results.length === 0) {
-                showStatus('No speech detected in the audio. Please try recording again with clearer audio.', 'error');
-                return;
-            }
+                if (!data.results || data.results.length === 0) {
+                    console.warn('No speech detected in results');
+                    showStatus('No speech detected in the audio. Please try recording again with clearer audio.', 'error');
+                    return;
+                }
 
             // Extract word-level information
             const wordInfo = [];
@@ -853,12 +885,17 @@ async function analyzeRecordedAudio() {
 
             showStatus(`Pronunciation analysis complete! ${analysis.mispronounced.length} potential error(s) detected.`, '');
 
-            // Scroll to results
-            exportOutput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Scroll to results
+                exportOutput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            } catch (innerError) {
+                console.error('Inner error during audio analysis:', innerError);
+                showStatus('Error analyzing audio: ' + innerError.message, 'error');
+            }
         };
 
     } catch (error) {
-        console.error('Speech-to-Text error:', error);
+        console.error('Outer Speech-to-Text error:', error);
         showStatus('Error analyzing audio: ' + error.message, 'error');
     }
 }

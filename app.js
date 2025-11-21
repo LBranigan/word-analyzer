@@ -1975,6 +1975,7 @@ async function generateTranscriptVideo() {
         // Add audio track from recorded audio
         const audioElement = new Audio();
         audioElement.src = URL.createObjectURL(audioBlob);
+        audioElement.muted = true;  // Mute playback in browser (audio still captured in video)
         const audioStream = audioElement.captureStream();
         audioStream.getAudioTracks().forEach(track => stream.addTrack(track));
 

@@ -1765,7 +1765,7 @@ function downloadAnalysisAsPDF() {
         }
     }
 
-    // Word-by-Word Results
+    // Color-Coded Transcript (Visual like video)
     if (yPos > 200) {
         doc.addPage();
         yPos = 20;
@@ -1774,7 +1774,78 @@ function downloadAnalysisAsPDF() {
     yPos += 5;
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text('Word-by-Word Analysis', margin, yPos);
+    doc.text('Color-Coded Transcript', margin, yPos);
+    yPos += 8;
+
+    // Add legend
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+
+    doc.setTextColor(34, 197, 94); // Green
+    doc.text('■ Correct', margin, yPos);
+
+    doc.setTextColor(249, 115, 22); // Orange
+    doc.text('■ Misread', margin + 25, yPos);
+
+    doc.setTextColor(239, 68, 68); // Red
+    doc.text('■ Skipped/Substituted', margin + 50, yPos);
+
+    doc.setTextColor(0);
+    yPos += 8;
+
+    // Build transcript as a flowing paragraph with color-coded words
+    doc.setFontSize(10);
+    let xPos = margin;
+    const lineHeight = 6;
+    const wordSpacing = 1.5;
+
+    analysis.aligned.forEach((item, index) => {
+        let color = [0, 0, 0];
+
+        if (item.status === 'correct') {
+            color = [34, 197, 94]; // Green
+        } else if (item.status === 'skipped') {
+            color = [239, 68, 68]; // Red
+        } else if (item.status === 'misread') {
+            color = [249, 115, 22]; // Orange
+        } else if (item.status === 'substituted') {
+            color = [220, 38, 38]; // Dark red
+        }
+
+        const word = item.expected + ' ';
+        const wordWidth = doc.getTextWidth(word);
+
+        // Check if word fits on current line
+        if (xPos + wordWidth > pageWidth - margin) {
+            xPos = margin;
+            yPos += lineHeight;
+
+            // Check if we need a new page
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+                xPos = margin;
+            }
+        }
+
+        doc.setTextColor(...color);
+        doc.text(word, xPos, yPos);
+        xPos += wordWidth + wordSpacing;
+    });
+
+    doc.setTextColor(0);
+    yPos += 10;
+
+    // Word-by-Word Detailed Analysis
+    if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+    }
+
+    yPos += 5;
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Detailed Word-by-Word Analysis', margin, yPos);
     yPos += 8;
 
     doc.setFontSize(9);

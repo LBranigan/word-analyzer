@@ -9,6 +9,12 @@ const state = {
     wasDragged: false,
     startPoint: null,
     endPoint: null,
+    // Zoom and pan state
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    isPanning: false,
+    panStartPoint: null,
     // Audio recording state
     audioStream: null,
     mediaRecorder: null,
@@ -86,6 +92,15 @@ function init() {
     stopRecordingBtn.addEventListener('click', stopRecording);
     downloadAudioBtn.addEventListener('click', downloadRecordedAudio);
     analyzeAudioBtn.addEventListener('click', analyzeRecordedAudio);
+
+    // Zoom controls event listeners
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
+
+    if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
+    if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
 }
 
 // Save API Key
@@ -311,12 +326,16 @@ function drawImageWithWords() {
         canvas.height = img.height;
 
         const ctx = canvas.getContext('2d');
+
+        // Apply zoom and pan transformations
+        ctx.setTransform(state.zoom, 0, 0, state.zoom, state.panX, state.panY);
+
         ctx.drawImage(img, 0, 0);
 
         // Draw word boundaries (green boxes for all detected words)
         if (state.ocrData && state.ocrData.words) {
             ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1 / state.zoom; // Adjust line width for zoom
 
             state.ocrData.words.forEach(word => {
                 const { x0, y0, x1, y1 } = word.bbox;
@@ -378,6 +397,14 @@ function handleWordClick(e) {
 
 function handleStart(e) {
     e.preventDefault();
+
+    // Check if spacebar is pressed or right mouse button for panning
+    if (e.button === 2 || e.shiftKey) {
+        state.isPanning = true;
+        state.panStartPoint = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY };
+        return;
+    }
+
     state.isDrawing = true;
     state.wasDragged = false;
     state.startPoint = getCanvasPoint(e);
@@ -387,8 +414,26 @@ function handleStart(e) {
 }
 
 function handleMove(e) {
-    if (!state.isDrawing) return;
     e.preventDefault();
+
+    // Handle panning
+    if (state.isPanning && state.panStartPoint) {
+        const currentX = e.clientX || (e.touches && e.touches[0].clientX);
+        const currentY = e.clientY || (e.touches && e.touches[0].clientY);
+
+        const deltaX = currentX - state.panStartPoint.x;
+        const deltaY = currentY - state.panStartPoint.y;
+
+        state.panX += deltaX;
+        state.panY += deltaY;
+
+        state.panStartPoint = { x: currentX, y: currentY };
+
+        redrawCanvas();
+        return;
+    }
+
+    if (!state.isDrawing) return;
 
     state.wasDragged = true;
     state.endPoint = getCanvasPoint(e);
@@ -396,6 +441,13 @@ function handleMove(e) {
 }
 
 function handleEnd(e) {
+    // Handle pan end
+    if (state.isPanning) {
+        state.isPanning = false;
+        state.panStartPoint = null;
+        return;
+    }
+
     if (!state.isDrawing) return;
     e.preventDefault();
 
@@ -434,9 +486,14 @@ function getCanvasPoint(e) {
         clientY = e.clientY;
     }
 
+    // Convert screen coordinates to canvas coordinates
+    const screenX = (clientX - rect.left) * scaleX;
+    const screenY = (clientY - rect.top) * scaleY;
+
+    // Account for zoom and pan transformations
     return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
+        x: (screenX - state.panX) / state.zoom,
+        y: (screenY - state.panY) / state.zoom
     };
 }
 
@@ -446,9 +503,12 @@ function drawSelectionLine() {
     const canvas = document.getElementById('selection-canvas');
     const ctx = canvas.getContext('2d');
 
+    // Apply zoom and pan transformations
+    ctx.setTransform(state.zoom, 0, 0, state.zoom, state.panX, state.panY);
+
     // Draw thick line from start to end
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.9)';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 8 / state.zoom; // Adjust line width for zoom
     ctx.lineCap = 'round';
 
     ctx.beginPath();
@@ -459,17 +519,17 @@ function drawSelectionLine() {
     // Draw larger circles at start and end for better visibility
     ctx.fillStyle = 'rgba(255, 0, 0, 0.9)';
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 / state.zoom; // Adjust line width for zoom
 
     // Start circle
     ctx.beginPath();
-    ctx.arc(state.startPoint.x, state.startPoint.y, 15, 0, 2 * Math.PI);
+    ctx.arc(state.startPoint.x, state.startPoint.y, 15 / state.zoom, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
 
     // End circle
     ctx.beginPath();
-    ctx.arc(state.endPoint.x, state.endPoint.y, 15, 0, 2 * Math.PI);
+    ctx.arc(state.endPoint.x, state.endPoint.y, 15 / state.zoom, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
 }
@@ -563,6 +623,13 @@ function redrawCanvas() {
     img.onload = function() {
         const canvas = document.getElementById('selection-canvas');
         const ctx = canvas.getContext('2d');
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Apply zoom and pan transformations
+        ctx.setTransform(state.zoom, 0, 0, state.zoom, state.panX, state.panY);
+
         ctx.drawImage(img, 0, 0);
 
         // Draw word boundaries
@@ -575,18 +642,36 @@ function redrawCanvas() {
                     ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
                     ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
                     ctx.strokeStyle = 'rgba(255, 200, 0, 0.9)';
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 3 / state.zoom; // Adjust line width for zoom
                     ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
                 } else {
                     // Subtle boundaries for unselected words
                     ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
-                    ctx.lineWidth = 1;
+                    ctx.lineWidth = 1 / state.zoom; // Adjust line width for zoom
                     ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
                 }
             });
         }
     };
     img.src = state.capturedImage;
+}
+
+// Zoom Functions
+function zoomIn() {
+    state.zoom = Math.min(state.zoom * 1.2, 5); // Max zoom 5x
+    redrawCanvas();
+}
+
+function zoomOut() {
+    state.zoom = Math.max(state.zoom / 1.2, 0.5); // Min zoom 0.5x
+    redrawCanvas();
+}
+
+function resetZoom() {
+    state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
+    redrawCanvas();
 }
 
 function updateWordCount() {

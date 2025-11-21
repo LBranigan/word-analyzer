@@ -1305,21 +1305,25 @@ function analyzePronunciation(expectedWords, spokenWordInfo) {
             let expectedFoundLater = false;
             let spokenFoundLater = false;
 
-            // Look ahead up to 5 words in spoken to see if expected word appears
-            for (let j = 1; j <= Math.min(5, spokenWordInfo.length - spokenIndex); j++) {
+            // Look ahead up to 10 words in spoken to see if expected word appears (exact match or similar)
+            for (let j = 1; j <= Math.min(10, spokenWordInfo.length - spokenIndex); j++) {
                 const lookAheadWord = spokenWordInfo[spokenIndex + j];
-                if (lookAheadWord && lookAheadWord.word && normalizeWord(lookAheadWord.word) === expNorm) {
-                    expectedFoundLater = true;
-                    break;
+                if (lookAheadWord && lookAheadWord.word) {
+                    if (normalizeWord(lookAheadWord.word) === expNorm || wordsAreSimilar(expected, lookAheadWord.word)) {
+                        expectedFoundLater = true;
+                        break;
+                    }
                 }
             }
 
-            // Look ahead up to 5 words in expected to see if spoken word appears
-            for (let j = 1; j <= Math.min(5, expectedWords.length - i); j++) {
+            // Look ahead up to 10 words in expected to see if spoken word appears (exact match or similar)
+            for (let j = 1; j <= Math.min(10, expectedWords.length - i); j++) {
                 const lookAheadExpected = expectedWords[i + j];
-                if (lookAheadExpected && normalizeWord(lookAheadExpected) === spkNorm) {
-                    spokenFoundLater = true;
-                    break;
+                if (lookAheadExpected) {
+                    if (normalizeWord(lookAheadExpected) === spkNorm || wordsAreSimilar(lookAheadExpected, spoken.word)) {
+                        spokenFoundLater = true;
+                        break;
+                    }
                 }
             }
 

@@ -1196,251 +1196,146 @@ function analyzePronunciation(expectedWords, spokenWordInfo) {
         }
     }
 
-    // Second pass: Align expected with spoken, detecting specific errors
-    for (let i = 0; i < expectedWords.length; i++) {
-        const expected = expectedWords[i];
+    // Second pass: Filter spoken words (remove fillers and repetitions)
+    const cleanSpoken = [];
+    for (let i = 0; i < spokenWordInfo.length; i++) {
+        const word = spokenWordInfo[i];
+        if (!word || !word.word) continue;
 
-        // Check if we've run out of spoken words
-        if (spokenIndex >= spokenWordInfo.length) {
-            analysis.aligned.push({
-                expected: expected,
-                spoken: null,
-                status: 'skipped',
-                errorType: 'skipped_word',
-                index: i
-            });
-            analysis.errors.skippedWords.push(i);
-            continue;
+        // Skip filler words
+        if (isFillerWord(word.word)) continue;
+
+        // Skip repeated words
+        const prevWord = cleanSpoken[cleanSpoken.length - 1];
+        if (prevWord && normalizeWord(word.word) === normalizeWord(prevWord.word)) continue;
+
+        cleanSpoken.push(word);
+    }
+
+    // Third pass: Dynamic programming alignment (optimal sequence alignment)
+    // Build DP table: dp[i][j] = best alignment score for expected[0...i-1] vs spoken[0...j-1]
+    const m = expectedWords.length;
+    const n = cleanSpoken.length;
+
+    const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+    const path = Array(m + 1).fill(null).map(() => Array(n + 1).fill(null));
+
+    // Initialize: skipping expected words (spoken runs out)
+    for (let i = 1; i <= m; i++) {
+        dp[i][0] = -i; // Penalty for each skipped expected word
+        path[i][0] = 'skip';
+    }
+
+    // Initialize: extra spoken words (not used)
+    for (let j = 1; j <= n; j++) {
+        dp[0][j] = -j * 0.5; // Smaller penalty for extra spoken words
+        path[0][j] = 'insert';
+    }
+
+    // Fill DP table
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            const expected = expectedWords[i - 1];
+            const spoken = cleanSpoken[j - 1];
+
+            const expNorm = normalizeWord(expected);
+            const spkNorm = normalizeWord(spoken.word);
+
+            let matchScore;
+            if (expNorm === spkNorm) {
+                matchScore = 1; // Perfect match
+            } else if (wordsAreSimilar(expected, spoken.word)) {
+                matchScore = 0.3; // Partial match (misread)
+            } else {
+                matchScore = -1; // Mismatch
+            }
+
+            // Three options:
+            // 1. Match/mismatch: align expected[i-1] with spoken[j-1]
+            const matchOption = dp[i - 1][j - 1] + matchScore;
+
+            // 2. Skip expected[i-1] (expected word not said)
+            const skipOption = dp[i - 1][j] - 1;
+
+            // 3. Insert spoken[j-1] (extra word spoken)
+            const insertOption = dp[i][j - 1] - 0.5;
+
+            // Choose best option
+            if (matchOption >= skipOption && matchOption >= insertOption) {
+                dp[i][j] = matchOption;
+                path[i][j] = 'match';
+            } else if (skipOption >= insertOption) {
+                dp[i][j] = skipOption;
+                path[i][j] = 'skip';
+            } else {
+                dp[i][j] = insertOption;
+                path[i][j] = 'insert';
+            }
         }
+    }
 
-        // Skip over filler words and repeated words in spoken
-        while (spokenIndex < spokenWordInfo.length) {
-            const currentSpoken = spokenWordInfo[spokenIndex];
-            const prevSpoken = spokenWordInfo[spokenIndex - 1];
+    // Backtrack to find optimal alignment
+    let i = m;
+    let j = n;
+    const alignment = [];
 
-            // Break if current word is invalid
-            if (!currentSpoken || !currentSpoken.word) {
-                spokenIndex++;
-                continue;
-            }
+    while (i > 0 || j > 0) {
+        const action = path[i][j];
 
-            // Check if it's a filler word
-            if (isFillerWord(currentSpoken.word)) {
-                spokenIndex++;
-                continue;
-            }
+        if (action === 'match') {
+            const expected = expectedWords[i - 1];
+            const spoken = cleanSpoken[j - 1];
+            const expNorm = normalizeWord(expected);
+            const spkNorm = normalizeWord(spoken.word);
 
-            // Check if it's a repeated word
-            if (spokenIndex > 0 && prevSpoken && prevSpoken.word &&
-                normalizeWord(currentSpoken.word) === normalizeWord(prevSpoken.word)) {
-                spokenIndex++;
-                continue;
-            }
-
-            // Found a valid word, break
-            break;
-        }
-
-        if (spokenIndex >= spokenWordInfo.length) {
-            analysis.aligned.push({
-                expected: expected,
-                spoken: null,
-                status: 'skipped',
-                errorType: 'skipped_word',
-                index: i
-            });
-            analysis.errors.skippedWords.push(i);
-            continue;
-        }
-
-        const spoken = spokenWordInfo[spokenIndex];
-
-        // Validate spoken word exists
-        if (!spoken || !spoken.word) {
-            analysis.aligned.push({
-                expected: expected,
-                spoken: null,
-                status: 'skipped',
-                errorType: 'skipped_word',
-                index: i
-            });
-            analysis.errors.skippedWords.push(i);
-            continue;
-        }
-
-        const expNorm = normalizeWord(expected);
-        const spkNorm = normalizeWord(spoken.word);
-
-        // Exact match
-        if (expNorm === spkNorm) {
-            analysis.aligned.push({
-                expected: expected,
-                spoken: spoken.word,
-                status: 'correct',
-                confidence: spoken.confidence,
-                index: i
-            });
-            analysis.correctCount++;
-            spokenIndex++;
-        }
-        // Similar but not exact - misread
-        else if (wordsAreSimilar(expected, spoken.word)) {
-            analysis.aligned.push({
-                expected: expected,
-                spoken: spoken.word,
-                status: 'misread',
-                errorType: 'misread_word',
-                confidence: spoken.confidence,
-                index: i
-            });
-            analysis.errors.misreadWords.push({
-                index: i,
-                expected: expected,
-                spoken: spoken.word
-            });
-            spokenIndex++;
-        }
-        // Look ahead to determine if it's a skip or substitution
-        else {
-            let expectedFoundLater = false;
-            let expectedFoundDistance = Infinity;
-            let spokenFoundLater = false;
-            let spokenFoundDistance = Infinity;
-
-            // Look ahead up to 10 words in spoken to see if expected word appears (exact match or similar)
-            for (let j = 1; j <= Math.min(10, spokenWordInfo.length - spokenIndex); j++) {
-                const lookAheadWord = spokenWordInfo[spokenIndex + j];
-                if (lookAheadWord && lookAheadWord.word) {
-                    if (normalizeWord(lookAheadWord.word) === expNorm || wordsAreSimilar(expected, lookAheadWord.word)) {
-                        expectedFoundLater = true;
-                        expectedFoundDistance = j;
-                        break;
-                    }
-                }
-            }
-
-            // Look ahead up to 10 words in expected to see if spoken word appears (exact match or similar)
-            for (let j = 1; j <= Math.min(10, expectedWords.length - i); j++) {
-                const lookAheadExpected = expectedWords[i + j];
-                if (lookAheadExpected) {
-                    if (normalizeWord(lookAheadExpected) === spkNorm || wordsAreSimilar(lookAheadExpected, spoken.word)) {
-                        spokenFoundLater = true;
-                        spokenFoundDistance = j;
-                        break;
-                    }
-                }
-            }
-
-            // Decision logic based on distances:
-            // If spoken word found at distance 1-2 in expected, current expected was likely skipped
-            // If expected word found closer than spoken word, current expected was skipped
-            // Otherwise, use other heuristics
-
-            if (spokenFoundLater && spokenFoundDistance <= 2 && !expectedFoundLater) {
-                // Spoken word appears very soon in expected (next 1-2 words) and expected word doesn't appear in spoken
-                // This means current expected word(s) were skipped
-                analysis.aligned.push({
-                    expected: expected,
-                    spoken: null,
-                    status: 'skipped',
-                    errorType: 'skipped_word',
-                    index: i
-                });
-                analysis.errors.skippedWords.push(i);
-                // Don't increment spokenIndex - reuse this spoken word for next expected
-            }
-            else if (expectedFoundLater && !spokenFoundLater) {
-                // Expected word appears later in spoken - it was skipped
-                analysis.aligned.push({
-                    expected: expected,
-                    spoken: null,
-                    status: 'skipped',
-                    errorType: 'skipped_word',
-                    index: i
-                });
-                analysis.errors.skippedWords.push(i);
-                // Don't increment spokenIndex - reuse this spoken word for next expected
-            }
-            else if (expectedFoundLater && spokenFoundLater) {
-                // Both found later - choose based on which is closer
-                if (expectedFoundDistance < spokenFoundDistance) {
-                    // Expected word appears closer in spoken - current was skipped
-                    analysis.aligned.push({
-                        expected: expected,
-                        spoken: null,
-                        status: 'skipped',
-                        errorType: 'skipped_word',
-                        index: i
-                    });
-                    analysis.errors.skippedWords.push(i);
-                    // Don't increment spokenIndex
-                } else if (spokenFoundDistance < expectedFoundDistance) {
-                    // Spoken word appears closer in expected - current expected was skipped
-                    analysis.aligned.push({
-                        expected: expected,
-                        spoken: null,
-                        status: 'skipped',
-                        errorType: 'skipped_word',
-                        index: i
-                    });
-                    analysis.errors.skippedWords.push(i);
-                    // Don't increment spokenIndex
-                } else {
-                    // Same distance or both far - treat as misread
-                    analysis.aligned.push({
-                        expected: expected,
-                        spoken: spoken.word,
-                        status: 'misread',
-                        errorType: 'misread_word',
-                        confidence: spoken.confidence,
-                        index: i
-                    });
-                    analysis.errors.misreadWords.push({
-                        index: i,
-                        expected: expected,
-                        spoken: spoken.word
-                    });
-                    spokenIndex++;
-                }
-            }
-            else if (spokenFoundLater && !expectedFoundLater && spokenFoundDistance > 2) {
-                // Spoken word found much later in expected - might be substitution
-                analysis.aligned.push({
+            if (expNorm === spkNorm) {
+                alignment.unshift({
                     expected: expected,
                     spoken: spoken.word,
-                    status: 'substituted',
-                    errorType: 'substituted_word',
+                    status: 'correct',
                     confidence: spoken.confidence,
-                    index: i
+                    index: i - 1
                 });
-                analysis.errors.substitutedWords.push({
-                    index: i,
-                    expected: expected,
-                    spoken: spoken.word
-                });
-                spokenIndex++;
-            }
-            else {
-                // Neither found later - treat as misread
-                analysis.aligned.push({
+                analysis.correctCount++;
+            } else {
+                alignment.unshift({
                     expected: expected,
                     spoken: spoken.word,
                     status: 'misread',
                     errorType: 'misread_word',
                     confidence: spoken.confidence,
-                    index: i
+                    index: i - 1
                 });
                 analysis.errors.misreadWords.push({
-                    index: i,
+                    index: i - 1,
                     expected: expected,
                     spoken: spoken.word
                 });
-                spokenIndex++;
             }
+            i--;
+            j--;
+        } else if (action === 'skip') {
+            alignment.unshift({
+                expected: expectedWords[i - 1],
+                spoken: null,
+                status: 'skipped',
+                errorType: 'skipped_word',
+                index: i - 1
+            });
+            analysis.errors.skippedWords.push(i - 1);
+            i--;
+        } else if (action === 'insert') {
+            // Extra spoken word - ignore it (don't add to alignment)
+            j--;
+        } else {
+            // Reached the beginning
+            break;
         }
     }
 
-    // Third pass: Detect skipped lines (3+ consecutive skipped words)
+    analysis.aligned = alignment;
+
+    // Fourth pass: Detect skipped lines (3+ consecutive skipped words)
     let consecutiveSkips = 0;
     let skipStart = -1;
 
@@ -1469,7 +1364,7 @@ function analyzePronunciation(expectedWords, spokenWordInfo) {
         });
     }
 
-    // Fourth pass: Detect repeated phrases (2+ consecutive words repeated)
+    // Fifth pass: Detect repeated phrases (2+ consecutive words repeated)
     // Only flag as error if spoken has MORE repetitions than expected
 
     // Build a map of all 2-word phrases and their occurrence counts

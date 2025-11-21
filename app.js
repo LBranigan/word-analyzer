@@ -791,7 +791,7 @@ async function analyzeRecordedAudio() {
         reader.onloadend = async () => {
             const base64Audio = reader.result.split(',')[1];
 
-            // Call Google Cloud Speech-to-Text API
+            // Call Google Cloud Speech-to-Text API with word-level details
             const response = await fetch(
                 `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
                 {
@@ -805,6 +805,8 @@ async function analyzeRecordedAudio() {
                             sampleRateHertz: 48000,
                             languageCode: 'en-US',
                             enableAutomaticPunctuation: true,
+                            enableWordConfidence: true,
+                            enableWordTimeOffsets: true,
                         },
                         audio: {
                             content: base64Audio
@@ -824,55 +826,32 @@ async function analyzeRecordedAudio() {
                 return;
             }
 
-            // Extract transcript
-            const transcript = data.results
-                .map(result => result.alternatives[0].transcript)
-                .join(' ');
+            // Extract word-level information
+            const wordInfo = [];
+            data.results.forEach(result => {
+                if (result.alternatives && result.alternatives[0].words) {
+                    result.alternatives[0].words.forEach(wordData => {
+                        wordInfo.push({
+                            word: wordData.word,
+                            confidence: wordData.confidence || 1.0
+                        });
+                    });
+                }
+            });
 
-            // Count words in transcript
-            const transcriptWords = transcript.trim().split(/\s+/);
-            const transcriptWordCount = transcriptWords.length;
+            console.log('Word-level info:', wordInfo);
 
-            // Get highlighted text from image
+            // Get expected text from highlighted words
             const selectedIndices = Array.from(state.selectedWords).sort((a, b) => a - b);
-            const highlightedText = selectedIndices
-                .map(index => state.ocrData.words[index].text)
-                .join(' ');
-            const highlightedWordCount = state.selectedWords.size;
+            const expectedWords = selectedIndices.map(index => state.ocrData.words[index].text);
 
-            // Display results with comparison
-            exportOutput.innerHTML = `
-                <h3>Audio Analysis - Error Detection</h3>
-                <div class="audio-analysis-result">
-                    <div class="comparison-section">
-                        <div class="text-comparison">
-                            <div class="comparison-box">
-                                <strong>📝 Written Text (from image):</strong>
-                                <div class="word-list">${highlightedText}</div>
-                                <div class="word-count-small">${highlightedWordCount} words</div>
-                            </div>
-                            <div class="comparison-box">
-                                <strong>🎤 Spoken Text (from audio):</strong>
-                                <div class="word-list">${transcript}</div>
-                                <div class="word-count-small">${transcriptWordCount} words</div>
-                            </div>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Word Count Difference:</span>
-                            <span class="stat-value ${highlightedWordCount === transcriptWordCount ? 'match' : 'mismatch'}">
-                                ${Math.abs(highlightedWordCount - transcriptWordCount)}
-                                ${highlightedWordCount === transcriptWordCount ? '✓ Match' : '✗ Mismatch'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            exportOutput.classList.add('active');
+            // Analyze pronunciation by comparing expected vs spoken words
+            const analysis = analyzePronunciation(expectedWords, wordInfo);
 
-            // Update word count display to show transcript count
-            wordCountDisplay.textContent = transcriptWordCount;
+            // Display results with pronunciation analysis
+            displayPronunciationResults(expectedWords, wordInfo, analysis);
 
-            showStatus(`Analysis complete! Compare the written and spoken text above.`, '');
+            showStatus(`Pronunciation analysis complete! ${analysis.mispronounced.length} potential error(s) detected.`, '');
 
             // Scroll to results
             exportOutput.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -882,6 +861,246 @@ async function analyzeRecordedAudio() {
         console.error('Speech-to-Text error:', error);
         showStatus('Error analyzing audio: ' + error.message, 'error');
     }
+}
+
+// Pronunciation Analysis Functions
+
+// Calculate Levenshtein distance for fuzzy word matching
+function levenshteinDistance(str1, str2) {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix = [];
+
+    for (let i = 0; i <= len1; i++) {
+        matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= len2; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+        for (let j = 1; j <= len2; j++) {
+            if (str1[i - 1] === str2[j - 1]) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
+            }
+        }
+    }
+
+    return matrix[len1][len2];
+}
+
+// Normalize word for comparison (remove punctuation, lowercase)
+function normalizeWord(word) {
+    return word.toLowerCase().replace(/[^\w]/g, '');
+}
+
+// Check if two words are similar enough (allowing for minor pronunciation differences)
+function wordsAreSimilar(expected, spoken) {
+    const exp = normalizeWord(expected);
+    const spk = normalizeWord(spoken);
+
+    if (exp === spk) return true;
+
+    const maxLen = Math.max(exp.length, spk.length);
+    const distance = levenshteinDistance(exp, spk);
+    const similarity = 1 - (distance / maxLen);
+
+    // Allow up to 25% difference for minor mispronunciations
+    return similarity >= 0.75;
+}
+
+// Analyze pronunciation by comparing expected vs spoken words
+function analyzePronunciation(expectedWords, spokenWordInfo) {
+    const analysis = {
+        aligned: [],
+        mispronounced: [],
+        missing: [],
+        extra: [],
+        correctCount: 0
+    };
+
+    let spokenIndex = 0;
+    const LOW_CONFIDENCE_THRESHOLD = 0.85;
+
+    for (let i = 0; i < expectedWords.length; i++) {
+        const expected = expectedWords[i];
+
+        if (spokenIndex >= spokenWordInfo.length) {
+            // No more spoken words - this word was skipped/missing
+            analysis.aligned.push({
+                expected: expected,
+                spoken: null,
+                status: 'missing',
+                confidence: 0,
+                index: i
+            });
+            analysis.missing.push(i);
+            continue;
+        }
+
+        const spoken = spokenWordInfo[spokenIndex];
+
+        if (wordsAreSimilar(expected, spoken.word)) {
+            // Words match or are similar
+            if (spoken.confidence < LOW_CONFIDENCE_THRESHOLD) {
+                // Low confidence = potential mispronunciation
+                analysis.aligned.push({
+                    expected: expected,
+                    spoken: spoken.word,
+                    status: 'mispronounced',
+                    confidence: spoken.confidence,
+                    index: i,
+                    reason: 'low_confidence'
+                });
+                analysis.mispronounced.push(i);
+            } else {
+                // Correct pronunciation
+                analysis.aligned.push({
+                    expected: expected,
+                    spoken: spoken.word,
+                    status: 'correct',
+                    confidence: spoken.confidence,
+                    index: i
+                });
+                analysis.correctCount++;
+            }
+            spokenIndex++;
+        } else {
+            // Words don't match - check if next spoken word matches (skip detected)
+            let foundMatch = false;
+
+            // Look ahead up to 2 words
+            for (let j = 1; j <= Math.min(2, spokenWordInfo.length - spokenIndex - 1); j++) {
+                if (wordsAreSimilar(expected, spokenWordInfo[spokenIndex + j].word)) {
+                    // Found match ahead - mark previous as extra/substitution
+                    analysis.aligned.push({
+                        expected: expected,
+                        spoken: spoken.word,
+                        status: 'mispronounced',
+                        confidence: spoken.confidence,
+                        index: i,
+                        reason: 'word_mismatch'
+                    });
+                    analysis.mispronounced.push(i);
+                    spokenIndex++;
+                    foundMatch = true;
+                    break;
+                }
+            }
+
+            if (!foundMatch) {
+                // Complete mismatch - word was mispronounced or substituted
+                analysis.aligned.push({
+                    expected: expected,
+                    spoken: spoken.word,
+                    status: 'mispronounced',
+                    confidence: spoken.confidence,
+                    index: i,
+                    reason: 'word_mismatch'
+                });
+                analysis.mispronounced.push(i);
+                spokenIndex++;
+            }
+        }
+    }
+
+    // Any remaining spoken words are "extra"
+    while (spokenIndex < spokenWordInfo.length) {
+        analysis.extra.push(spokenWordInfo[spokenIndex].word);
+        spokenIndex++;
+    }
+
+    console.log('Pronunciation analysis:', analysis);
+    return analysis;
+}
+
+// Display pronunciation analysis results
+function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
+    // Build HTML for word-by-word display
+    let wordsHtml = '';
+
+    analysis.aligned.forEach(item => {
+        const word = item.expected;
+        let className = 'word-correct';
+        let tooltip = `Confidence: ${(item.confidence * 100).toFixed(0)}%`;
+
+        if (item.status === 'mispronounced') {
+            className = 'word-mispronounced';
+            if (item.reason === 'low_confidence') {
+                tooltip = `Possible mispronunciation (${(item.confidence * 100).toFixed(0)}% confidence)`;
+            } else {
+                tooltip = `Expected: "${word}", Heard: "${item.spoken}"`;
+            }
+        } else if (item.status === 'missing') {
+            className = 'word-missing';
+            tooltip = 'Word was not spoken';
+        }
+
+        wordsHtml += `<span class="${className}" title="${tooltip}">${word}</span> `;
+    });
+
+    // Build statistics
+    const totalWords = expectedWords.length;
+    const correctCount = analysis.correctCount;
+    const mispronounced = analysis.mispronounced.length;
+    const missing = analysis.missing.length;
+    const accuracy = ((correctCount / totalWords) * 100).toFixed(1);
+
+    // Get spoken text for comparison
+    const spokenText = spokenWordInfo.map(w => w.word).join(' ');
+
+    exportOutput.innerHTML = `
+        <h3>🎯 Pronunciation Analysis</h3>
+        <div class="audio-analysis-result">
+            <div class="stats-grid">
+                <div class="stat-box stat-correct">
+                    <div class="stat-number">${correctCount}</div>
+                    <div class="stat-label">Correct</div>
+                </div>
+                <div class="stat-box stat-error">
+                    <div class="stat-number">${mispronounced}</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-box stat-missing">
+                    <div class="stat-number">${missing}</div>
+                    <div class="stat-label">Skipped</div>
+                </div>
+                <div class="stat-box stat-accuracy">
+                    <div class="stat-number">${accuracy}%</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+            </div>
+
+            <div class="pronunciation-text">
+                <h4>📝 Text with Pronunciation Feedback:</h4>
+                <div class="analyzed-text">${wordsHtml}</div>
+                <div class="legend">
+                    <span class="legend-item"><span class="word-correct">Green</span> = Correct pronunciation</span>
+                    <span class="legend-item"><span class="word-mispronounced">Red</span> = Mispronounced or unclear</span>
+                    <span class="legend-item"><span class="word-missing">Gray</span> = Skipped word</span>
+                </div>
+                <p class="hint-text">💡 Hover over highlighted words to see details</p>
+            </div>
+
+            <div class="comparison-section">
+                <div class="comparison-box">
+                    <strong>🎤 What was spoken:</strong>
+                    <div class="word-list">${spokenText}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    exportOutput.classList.add('active');
+
+    // Update word count display
+    wordCountDisplay.textContent = correctCount;
 }
 
 // Initialize on load

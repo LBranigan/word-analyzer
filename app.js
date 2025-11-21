@@ -1947,12 +1947,11 @@ async function generateTranscriptVideo() {
             xPos += wordWidth;
         });
 
-        // Create audio context to get duration
+        // Create audio context and decode audio (will be used for both duration and streaming)
         const audioContext = new AudioContext();
         const audioBuffer = await audioBlob.arrayBuffer();
         const decodedAudio = await audioContext.decodeAudioData(audioBuffer);
         const audioDuration = decodedAudio.duration;
-        audioContext.close();
 
         // Render function
         function renderFrame(currentTime) {
@@ -2040,19 +2039,27 @@ async function generateTranscriptVideo() {
             ctx.fillText('■ Not Yet Spoken', padding + 450, legendY);
         }
 
-        // Create video using MediaRecorder
-        const stream = canvas.captureStream(30); // 30 fps
+        // Create canvas stream for video
+        const canvasStream = canvas.captureStream(30); // 30 fps
 
-        // Add audio track from recorded audio
-        const audioElement = new Audio();
-        audioElement.src = URL.createObjectURL(audioBlob);
-        audioElement.volume = 0;  // Silent playback in browser (audio still captured in stream)
-        const audioStream = audioElement.captureStream();
-        audioStream.getAudioTracks().forEach(track => stream.addTrack(track));
+        // Create media stream destination for audio
+        const audioDestination = audioContext.createMediaStreamDestination();
 
-        const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9',
-            videoBitsPerSecond: 2500000
+        // Create buffer source from previously decoded audio
+        const audioSource = audioContext.createBufferSource();
+        audioSource.buffer = decodedAudio;
+        audioSource.connect(audioDestination);
+
+        // Combine video and audio streams
+        const combinedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...audioDestination.stream.getAudioTracks()
+        ]);
+
+        const mediaRecorder = new MediaRecorder(combinedStream, {
+            mimeType: 'video/webm;codecs=vp9,opus',
+            videoBitsPerSecond: 2500000,
+            audioBitsPerSecond: 128000
         });
 
         const chunks = [];
@@ -2062,9 +2069,12 @@ async function generateTranscriptVideo() {
             }
         };
 
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
             const videoBlob = new Blob(chunks, { type: 'video/webm' });
             const url = URL.createObjectURL(videoBlob);
+
+            // Clean up audio context
+            audioContext.close();
 
             // Create download link
             const a = document.createElement('a');
@@ -2084,9 +2094,9 @@ async function generateTranscriptVideo() {
             generateBtn.disabled = false;
         };
 
-        // Start recording
+        // Start recording and audio playback simultaneously
         mediaRecorder.start();
-        audioElement.play();
+        audioSource.start(0);
 
         // Render frames
         const fps = 30;
@@ -2099,7 +2109,7 @@ async function generateTranscriptVideo() {
             if (currentTime >= audioDuration) {
                 clearInterval(renderInterval);
                 mediaRecorder.stop();
-                audioElement.pause();
+                audioSource.stop();
             } else {
                 renderFrame(currentTime);
             }

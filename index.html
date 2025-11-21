@@ -140,7 +140,7 @@
 
         <footer>
             <p class="hint">👆 Left-click: drag to select words • Right-click: drag to pan image • Click yellow words to deselect</p>
-            <p class="version">Version: 2025-01-21 17:45 UTC</p>
+            <p class="version">Version: 2025-01-21 18:00 UTC</p>
         </footer>
     </div>
 
@@ -160,15 +160,18 @@
         </div>
     </div>
 
-    <!-- Recording Status Modal -->
-    <div id="recording-modal" class="modal">
-        <div class="modal-content recording-active">
-            <h2>🎤 Recording...</h2>
+    <!-- Recording Status -->
+    <div id="recording-modal" class="recording-indicator">
+        <div class="recording-indicator-content">
+            <div class="recording-header">
+                <span class="recording-icon">🎤</span>
+                <span class="recording-label">Recording</span>
+            </div>
             <div class="recording-timer" id="recording-timer">00:00</div>
             <div class="recording-progress">
                 <div class="progress-bar" id="progress-bar"></div>
             </div>
-            <button id="stop-recording-btn" class="btn btn-danger">Stop Recording</button>
+            <button id="stop-recording-btn" class="btn btn-danger btn-stop-compact">Stop</button>
         </div>
     </div>
 

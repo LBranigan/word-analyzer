@@ -6,6 +6,7 @@ const state = {
     ocrData: null,
     selectedWords: new Set(),
     isDrawing: false,
+    wasDragged: false,
     startPoint: null,
     endPoint: null,
     // Audio recording state
@@ -339,6 +340,7 @@ function setupCanvasInteraction() {
         canvas.removeEventListener('mousedown', handleStart);
         canvas.removeEventListener('mousemove', handleMove);
         canvas.removeEventListener('mouseup', handleEnd);
+        canvas.removeEventListener('click', handleWordClick);
     }
 
     // Touch events
@@ -351,12 +353,29 @@ function setupCanvasInteraction() {
     canvas.addEventListener('mousemove', handleMove);
     canvas.addEventListener('mouseup', handleEnd);
 
+    // Click event for deselecting words
+    canvas.addEventListener('click', handleWordClick);
+
     listenersAttached = true;
+}
+
+function handleWordClick(e) {
+    const clickPoint = getCanvasPoint(e);
+    const clickedWordIndex = findWordAtPoint(clickPoint);
+
+    if (clickedWordIndex !== -1 && state.selectedWords.has(clickedWordIndex)) {
+        // Word is selected, so deselect it
+        state.selectedWords.delete(clickedWordIndex);
+        updateWordCount();
+        redrawCanvas();
+        console.log('Deselected word at index:', clickedWordIndex);
+    }
 }
 
 function handleStart(e) {
     e.preventDefault();
     state.isDrawing = true;
+    state.wasDragged = false;
     state.startPoint = getCanvasPoint(e);
     state.endPoint = state.startPoint;
 
@@ -367,6 +386,7 @@ function handleMove(e) {
     if (!state.isDrawing) return;
     e.preventDefault();
 
+    state.wasDragged = true;
     state.endPoint = getCanvasPoint(e);
     drawSelectionLine();
 }
@@ -380,11 +400,14 @@ function handleEnd(e) {
 
     console.log('Ended at:', state.endPoint);
 
-    // Select words between start and end
-    selectWordsBetweenPoints();
+    // Only select words if it was a drag, not just a click
+    if (state.wasDragged) {
+        // Select words between start and end
+        selectWordsBetweenPoints();
 
-    // Redraw with highlighted words
-    redrawCanvas();
+        // Redraw with highlighted words
+        redrawCanvas();
+    }
 }
 
 function getCanvasPoint(e) {
@@ -483,6 +506,21 @@ function selectWordsBetweenPoints() {
 
     console.log('Total selected words:', state.selectedWords.size);
     updateWordCount();
+}
+
+function findWordAtPoint(point) {
+    if (!state.ocrData || !state.ocrData.words) return -1;
+
+    // Check if point is inside any word's bounding box
+    for (let i = 0; i < state.ocrData.words.length; i++) {
+        const { x0, y0, x1, y1 } = state.ocrData.words[i].bbox;
+
+        if (point.x >= x0 && point.x <= x1 && point.y >= y0 && point.y <= y1) {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 function findClosestWordIndex(point) {

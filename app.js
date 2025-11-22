@@ -374,7 +374,7 @@ function updateMiniPreview() {
     const img = new Image();
     img.onload = () => {
         const maxWidth = 700;
-        const maxHeight = 400;
+        const maxHeight = miniPreviewCanvas.classList.contains('expanded') ? 800 : 400;
         const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
         miniPreviewCanvas.width = img.width * scale;
         miniPreviewCanvas.height = img.height * scale;
@@ -382,21 +382,27 @@ function updateMiniPreview() {
     };
     img.src = state.capturedImage;
 
-    // Add click-to-expand functionality
-    miniPreviewCanvas.onclick = () => {
-        const modal = document.getElementById('image-preview-modal');
-        const modalImg = document.getElementById('image-preview-img');
-        if (modal && modalImg) {
-            modalImg.src = state.capturedImage;
-            modal.classList.add('active');
+    // Add toggle expand/collapse functionality
+    const toggleBtn = document.getElementById('toggle-preview-size-btn');
+    const toggleText = document.getElementById('toggle-preview-text');
 
-            // Close modal when clicking the image
-            modalImg.onclick = (e) => {
-                e.stopPropagation();
-                modal.classList.remove('active');
-            };
-        }
-    };
+    if (toggleBtn && toggleText) {
+        // Remove any existing listeners to avoid duplicates
+        const newToggleBtn = toggleBtn.cloneNode(true);
+        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+
+        newToggleBtn.addEventListener('click', () => {
+            const isExpanded = miniPreviewCanvas.classList.toggle('expanded');
+            toggleText.textContent = isExpanded ? 'Collapse' : 'Expand';
+
+            // Redraw canvas with new size
+            const maxHeight = isExpanded ? 800 : 400;
+            const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+            miniPreviewCanvas.width = img.width * scale;
+            miniPreviewCanvas.height = img.height * scale;
+            ctx.drawImage(img, 0, 0, miniPreviewCanvas.width, miniPreviewCanvas.height);
+        });
+    }
 }
 
 // Start new analysis
@@ -708,12 +714,18 @@ function handleWordClick(e) {
     const clickPoint = getCanvasPoint(e);
     const clickedWordIndex = findWordAtPoint(clickPoint);
 
-    if (clickedWordIndex !== -1 && state.selectedWords.has(clickedWordIndex)) {
-        // Word is selected, so deselect it
-        state.selectedWords.delete(clickedWordIndex);
+    if (clickedWordIndex !== -1) {
+        if (state.selectedWords.has(clickedWordIndex)) {
+            // Word is selected, so deselect it
+            state.selectedWords.delete(clickedWordIndex);
+            console.log('Deselected word at index:', clickedWordIndex);
+        } else {
+            // Word is not selected, so select it
+            state.selectedWords.add(clickedWordIndex);
+            console.log('Selected word at index:', clickedWordIndex);
+        }
         updateWordCount();
         redrawCanvas();
-        console.log('Deselected word at index:', clickedWordIndex);
     }
 }
 

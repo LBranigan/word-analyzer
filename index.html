@@ -136,7 +136,12 @@
 
                 <div class="audio-recording-container">
                     <div class="image-preview">
-                        <h4>📄 Captured Text Preview</h4>
+                        <div class="preview-header">
+                            <h4>📄 Captured Text Preview</h4>
+                            <button id="toggle-preview-size-btn" class="btn btn-secondary btn-sm">
+                                <span class="icon">🔍</span> <span id="toggle-preview-text">Expand</span>
+                            </button>
+                        </div>
                         <canvas id="mini-preview-canvas"></canvas>
                     </div>
 

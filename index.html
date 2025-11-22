@@ -30,14 +30,14 @@
                     <span class="step-label">Setup</span>
                 </div>
                 <span class="breadcrumb-arrow">→</span>
-                <div class="breadcrumb-step" data-step="capture">
+                <div class="breadcrumb-step" data-step="audio">
                     <span class="step-icon">1</span>
-                    <span class="step-label">Capture Image</span>
+                    <span class="step-label">Record Audio</span>
                 </div>
                 <span class="breadcrumb-arrow">→</span>
-                <div class="breadcrumb-step" data-step="audio">
+                <div class="breadcrumb-step" data-step="capture">
                     <span class="step-icon">2</span>
-                    <span class="step-label">Record Audio</span>
+                    <span class="step-label">Capture Image</span>
                 </div>
                 <span class="breadcrumb-arrow">→</span>
                 <div class="breadcrumb-step" data-step="highlight">
@@ -96,9 +96,9 @@
             <!-- Camera Section -->
             <section id="camera-section" class="section">
                 <div class="step-header">
-                    <div class="step-badge">Step 1</div>
+                    <div class="step-badge">Step 2</div>
                     <h2>Capture Image</h2>
-                    <p class="step-subtitle">First, let's capture the text that will be read</p>
+                    <p class="step-subtitle">Now capture the text that was just read</p>
                 </div>
 
                 <div class="camera-container">
@@ -114,10 +114,19 @@
                     </button>
                 </div>
 
+                <div class="step-navigation">
+                    <button id="back-to-audio-btn" class="btn btn-secondary">
+                        <span class="icon">←</span> Back to Audio
+                    </button>
+                    <button id="next-to-highlight-btn" class="btn btn-primary" disabled>
+                        Next: Highlight Text <span class="icon">→</span>
+                    </button>
+                </div>
+
                 <div class="instructions-box">
                     <h4>💡 Quick Guide:</h4>
                     <ol class="instructions-list">
-                        <li>Take a clear photo of the text to be read</li>
+                        <li>Take a clear photo of the text you just read from</li>
                         <li>Make sure the text is well-lit and in focus</li>
                         <li>The image will be processed for word detection</li>
                     </ol>
@@ -129,22 +138,12 @@
             <!-- Audio Recording Section -->
             <section id="audio-section" class="section">
                 <div class="step-header">
-                    <div class="step-badge">Step 2</div>
+                    <div class="step-badge">Step 1</div>
                     <h2>Record Audio</h2>
-                    <p class="step-subtitle">Record the student reading the text</p>
+                    <p class="step-subtitle">First, record yourself reading from a text</p>
                 </div>
 
                 <div class="audio-recording-container">
-                    <div class="image-preview">
-                        <div class="preview-header">
-                            <h4>📄 Captured Text Preview</h4>
-                            <button id="toggle-preview-size-btn" class="btn btn-secondary btn-sm">
-                                <span class="icon">🔍</span> <span id="toggle-preview-text">Expand</span>
-                            </button>
-                        </div>
-                        <canvas id="mini-preview-canvas"></canvas>
-                    </div>
-
                     <div class="audio-controls-center">
                         <button id="record-audio-btn" class="btn btn-audio btn-large">
                             <span class="icon">🎤</span> Record Audio
@@ -166,19 +165,18 @@
                 </div>
 
                 <div class="step-navigation">
-                    <button id="back-to-capture-btn" class="btn btn-secondary">
-                        <span class="icon">←</span> Back to Capture
-                    </button>
-                    <button id="next-to-highlight-btn" class="btn btn-primary" disabled>
-                        Next: Highlight Text <span class="icon">→</span>
+                    <button id="next-to-capture-btn" class="btn btn-primary" disabled>
+                        Next: Capture Image <span class="icon">→</span>
                     </button>
                 </div>
 
                 <div class="instructions-box">
-                    <h4>💡 Recording Tips:</h4>
+                    <h4>📖 Important Instructions:</h4>
                     <ul class="instructions-list">
-                        <li>Choose recording duration (1-5 minutes)</li>
-                        <li>Make sure the microphone is working</li>
+                        <li><strong>Have a physical text ready to read from</strong> (book, document, article, etc.)</li>
+                        <li>Select how long you want to record (30 seconds, 1 minute, or 2 minutes)</li>
+                        <li>Click "Record Audio" and read from your text clearly and steadily</li>
+                        <li>After recording, you'll capture a photo of the text you read from</li>
                         <li>Record in a quiet environment for best results</li>
                     </ul>
                 </div>
@@ -217,8 +215,8 @@
                 <div id="status" class="status"></div>
 
                 <div class="step-navigation">
-                    <button id="back-to-audio-btn" class="btn btn-secondary">
-                        <span class="icon">←</span> Back to Audio
+                    <button id="back-to-capture-btn" class="btn btn-secondary">
+                        <span class="icon">←</span> Back to Capture
                     </button>
                     <button id="analyze-audio-btn" class="btn btn-primary btn-large" disabled>
                         <span class="icon">🔍</span> Analyze Reading

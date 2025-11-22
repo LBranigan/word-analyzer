@@ -30,7 +30,7 @@ const state = {
     // Step management
     currentStep: 'setup',
     completedSteps: new Set(),
-    stepsOrder: ['setup', 'capture', 'audio', 'highlight', 'results']
+    stepsOrder: ['setup', 'audio', 'capture', 'highlight', 'results']
 };
 
 // DOM Elements
@@ -74,9 +74,10 @@ const analyzeAudioBtn = document.getElementById('analyze-audio-btn');
 const breadcrumbNav = document.getElementById('breadcrumb-nav');
 const audioSection = document.getElementById('audio-section');
 const resultsSection = document.getElementById('results-section');
-const backToCaptureBtn = document.getElementById('back-to-capture-btn');
-const nextToHighlightBtn = document.getElementById('next-to-highlight-btn');
+const nextToCaptureBtn = document.getElementById('next-to-capture-btn');
 const backToAudioBtn = document.getElementById('back-to-audio-btn');
+const nextToHighlightBtn = document.getElementById('next-to-highlight-btn');
+const backToCaptureBtn = document.getElementById('back-to-capture-btn');
 const backToEditBtn = document.getElementById('back-to-edit-btn');
 const startNewAnalysisBtn = document.getElementById('start-new-analysis-btn');
 const goToAudioBtn = document.getElementById('go-to-audio-btn');
@@ -129,9 +130,10 @@ function init() {
     if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
 
     // Step navigation event listeners
-    if (backToCaptureBtn) backToCaptureBtn.addEventListener('click', () => goToStep('capture'));
-    if (nextToHighlightBtn) nextToHighlightBtn.addEventListener('click', () => goToStep('highlight'));
+    if (nextToCaptureBtn) nextToCaptureBtn.addEventListener('click', () => goToStep('capture'));
     if (backToAudioBtn) backToAudioBtn.addEventListener('click', () => goToStep('audio'));
+    if (nextToHighlightBtn) nextToHighlightBtn.addEventListener('click', () => goToStep('highlight'));
+    if (backToCaptureBtn) backToCaptureBtn.addEventListener('click', () => goToStep('capture'));
     if (backToEditBtn) backToEditBtn.addEventListener('click', () => goToStep('highlight'));
     if (startNewAnalysisBtn) startNewAnalysisBtn.addEventListener('click', startNewAnalysis);
     if (goToAudioBtn) goToAudioBtn.addEventListener('click', () => goToStep('audio'));
@@ -161,10 +163,9 @@ function saveApiKey() {
 // Show Camera Section
 function showCameraSection() {
     setupSection.classList.remove('active');
-    cameraSection.classList.add('active');
+    audioSection.classList.add('active');
     state.completedSteps.add('setup');
-    goToStep('capture');
-    initCamera();
+    goToStep('audio');
 }
 
 // ============ STEP MANAGEMENT & NAVIGATION ============
@@ -195,9 +196,9 @@ function goToStep(step) {
         targetSection.classList.add('active');
     }
 
-    // Special handling for audio section
-    if (step === 'audio') {
-        updateMiniPreview();
+    // Special handling for capture section - initialize camera
+    if (step === 'capture') {
+        initCamera();
     }
 
     // Update breadcrumb and button states
@@ -295,11 +296,22 @@ function setupBreadcrumbClickHandlers() {
 // Update button states based on requirements
 function updateButtonStates() {
     // Audio section: Enable next button if audio recorded
-    if (nextToHighlightBtn) {
+    if (nextToCaptureBtn) {
         const hasAudio = state.recordedAudioBlob !== null;
-        nextToHighlightBtn.disabled = !hasAudio;
+        nextToCaptureBtn.disabled = !hasAudio;
         if (!hasAudio) {
-            nextToHighlightBtn.setAttribute('data-tooltip', 'Record audio first');
+            nextToCaptureBtn.setAttribute('data-tooltip', 'Record audio first');
+        } else {
+            nextToCaptureBtn.removeAttribute('data-tooltip');
+        }
+    }
+
+    // Capture section: Enable next button if image captured
+    if (nextToHighlightBtn) {
+        const hasImage = state.capturedImage !== null && state.ocrData !== null;
+        nextToHighlightBtn.disabled = !hasImage;
+        if (!hasImage) {
+            nextToHighlightBtn.setAttribute('data-tooltip', 'Capture image first');
         } else {
             nextToHighlightBtn.removeAttribute('data-tooltip');
         }
@@ -432,7 +444,7 @@ function startNewAnalysis() {
         latestAnalysis: null,
         latestExpectedWords: null,
         latestSpokenWords: null,
-        currentStep: 'capture',
+        currentStep: 'audio',
         completedSteps: new Set(['setup'])
     });
 
@@ -444,9 +456,8 @@ function startNewAnalysis() {
     // Reset preview toggle setup flag
     previewToggleSetup = false;
 
-    // Go to capture step
-    goToStep('capture');
-    initCamera();
+    // Go to audio step (first step after setup)
+    goToStep('audio');
 }
 
 // ============ END STEP MANAGEMENT ============
@@ -491,8 +502,8 @@ function handleFileUpload(e) {
         // Mark capture step as complete
         state.completedSteps.add('capture');
 
-        // Switch to audio section
-        goToStep('audio');
+        // Switch to highlight section
+        goToStep('highlight');
 
         // Process OCR in background
         processOCR();
@@ -520,8 +531,8 @@ function capturePhoto() {
     // Mark capture step as complete
     state.completedSteps.add('capture');
 
-    // Switch to audio section
-    goToStep('audio');
+    // Switch to highlight section
+    goToStep('highlight');
 
     // Process OCR in background
     processOCR();

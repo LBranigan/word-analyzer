@@ -1368,12 +1368,21 @@ async function analyzeRecordedAudio() {
             try {
                 const base64Audio = reader.result.split(',')[1];
 
-                console.log('Audio blob size:', state.recordedAudioBlob.size);
+                // Detailed debugging information
+                const fileSizeBytes = state.recordedAudioBlob.size;
+                const fileSizeKB = fileSizeBytes / 1024;
+                const fileSizeMB = fileSizeBytes / (1024 * 1024);
+
+                console.log('=== AUDIO FILE DEBUG INFO ===');
+                console.log('Audio blob size (bytes):', fileSizeBytes);
+                console.log('Audio blob size (KB):', fileSizeKB.toFixed(2));
+                console.log('Audio blob size (MB):', fileSizeMB.toFixed(2));
                 console.log('Audio blob type:', state.recordedAudioBlob.type);
                 console.log('Base64 audio length:', base64Audio.length);
+                console.log('Recording duration (seconds):', state.recordingDuration);
+                console.log('Recording duration (minutes):', (state.recordingDuration / 60).toFixed(2));
 
                 // Check file size (Google has ~10MB limit for synchronous recognition)
-                const fileSizeMB = state.recordedAudioBlob.size / (1024 * 1024);
                 if (fileSizeMB > 9.5) {
                     throw new Error(`Audio file too large (${fileSizeMB.toFixed(1)}MB). Please record shorter audio or reduce quality.`);
                 }
@@ -1394,14 +1403,15 @@ async function analyzeRecordedAudio() {
                 };
 
                 console.log('Sending request to Speech-to-Text API...');
-                console.log('Recording duration:', state.recordingDuration, 'seconds');
 
-                // Use Long Running Recognize for audio longer than 60 seconds
-                const useLongRunning = state.recordingDuration > 60;
+                // Use Long Running Recognize for audio 60 seconds or longer (>= 60)
+                // Google's synchronous API only supports audio up to 60 seconds
+                const useLongRunning = state.recordingDuration >= 60;
+                console.log('API Selection - Use Long Running?:', useLongRunning);
                 let data;
 
                 if (useLongRunning) {
-                    console.log('Using Long Running Recognize API for audio > 60 seconds');
+                    console.log('Using Long Running Recognize API for audio >= 60 seconds');
                     showStatus('Processing long audio file... This may take a moment.', 'processing');
 
                     // Call Long Running Recognize API

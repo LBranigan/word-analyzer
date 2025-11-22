@@ -266,10 +266,13 @@
     <div id="audio-modal" class="modal">
         <div class="modal-content">
             <h2>Record Audio</h2>
-            <p>How many minutes would you like to record?</p>
+            <p>How long would you like to record?</p>
             <div class="duration-input">
-                <input type="number" id="audio-duration" min="1" max="5" value="1" />
-                <span>minutes (max 5)</span>
+                <select id="audio-duration">
+                    <option value="0.5">30 seconds</option>
+                    <option value="1" selected>1 minute</option>
+                    <option value="2">2 minutes</option>
+                </select>
             </div>
             <div class="modal-buttons">
                 <button id="start-recording-btn" class="btn btn-primary">Start Recording</button>

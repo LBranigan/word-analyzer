@@ -1113,10 +1113,10 @@ function closeAudioModal() {
 }
 
 async function startRecording() {
-    const duration = parseInt(audioDurationInput.value);
+    const duration = parseFloat(audioDurationInput.value);
 
-    if (duration < 1 || duration > 5) {
-        alert('Please enter a duration between 1 and 5 minutes');
+    if (duration < 0.5 || duration > 2) {
+        alert('Please select a valid duration (30 seconds, 1 minute, or 2 minutes)');
         return;
     }
 
@@ -1274,6 +1274,50 @@ function downloadRecordedAudio() {
     alert('Audio file downloaded successfully!');
 }
 
+// Helper function to poll for long-running operation results
+async function pollLongRunningOperation(operationName, apiKey) {
+    const maxAttempts = 60; // Poll for up to 5 minutes (60 attempts * 5 seconds)
+    const pollInterval = 5000; // Poll every 5 seconds
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        console.log(`Polling attempt ${attempt + 1}/${maxAttempts} for operation: ${operationName}`);
+
+        const response = await fetch(
+            `https://speech.googleapis.com/v1/operations/${operationName}?key=${apiKey}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }
+        );
+
+        const operation = await response.json();
+        console.log('Operation status:', operation);
+
+        if (operation.error) {
+            throw new Error(operation.error.message || 'Error in long running operation');
+        }
+
+        // Check if operation is done
+        if (operation.done) {
+            console.log('Operation completed successfully');
+            if (!operation.response) {
+                throw new Error('Operation completed but no response data received');
+            }
+            return operation.response;
+        }
+
+        // Wait before next poll
+        if (attempt < maxAttempts - 1) {
+            showStatus(`Processing audio... (${attempt + 1}/${maxAttempts})`, 'processing');
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+        }
+    }
+
+    throw new Error('Operation timed out. Please try again with shorter audio or contact support.');
+}
+
 async function analyzeRecordedAudio() {
     if (!state.recordedAudioBlob) {
         alert('No audio recording available');
@@ -1339,24 +1383,61 @@ async function analyzeRecordedAudio() {
                 };
 
                 console.log('Sending request to Speech-to-Text API...');
+                console.log('Recording duration:', state.recordingDuration, 'seconds');
 
-                // Call Google Cloud Speech-to-Text API with word-level details
-                const response = await fetch(
-                    `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestBody)
+                // Use Long Running Recognize for audio longer than 60 seconds
+                const useLongRunning = state.recordingDuration > 60;
+                let data;
+
+                if (useLongRunning) {
+                    console.log('Using Long Running Recognize API for audio > 60 seconds');
+                    showStatus('Processing long audio file... This may take a moment.', 'processing');
+
+                    // Call Long Running Recognize API
+                    const longRunningResponse = await fetch(
+                        `https://speech.googleapis.com/v1/speech:longrunningrecognize?key=${state.apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        }
+                    );
+
+                    const operationData = await longRunningResponse.json();
+                    console.log('Long Running Operation Response:', operationData);
+
+                    if (operationData.error) {
+                        throw new Error(operationData.error.message || 'Error starting long running operation');
                     }
-                );
 
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
+                    if (!operationData.name) {
+                        throw new Error('No operation name returned from API');
+                    }
 
-                const data = await response.json();
-                console.log('API Response:', data);
+                    // Poll for results
+                    data = await pollLongRunningOperation(operationData.name, state.apiKey);
+                } else {
+                    console.log('Using synchronous Recognize API for audio <= 60 seconds');
+                    // Call synchronous Speech-to-Text API with word-level details
+                    const response = await fetch(
+                        `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        }
+                    );
+
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+
+                    data = await response.json();
+                    console.log('API Response:', data);
+                }
 
                 if (data.error) {
                     console.error('API Error:', data.error);

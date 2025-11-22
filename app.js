@@ -370,6 +370,15 @@ function updateRequirementsChecklist() {
 function updateMiniPreview() {
     if (!miniPreviewCanvas || !state.capturedImage) return;
 
+    // Draw the preview
+    redrawPreviewCanvas();
+
+    // Setup toggle expand/collapse functionality
+    setupPreviewToggle();
+}
+
+// Redraw the preview canvas with current size
+function redrawPreviewCanvas() {
     const ctx = miniPreviewCanvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
@@ -381,28 +390,29 @@ function updateMiniPreview() {
         ctx.drawImage(img, 0, 0, miniPreviewCanvas.width, miniPreviewCanvas.height);
     };
     img.src = state.capturedImage;
+}
 
-    // Add toggle expand/collapse functionality
+// Setup toggle button for preview (only once)
+let previewToggleSetup = false;
+function setupPreviewToggle() {
+    if (previewToggleSetup) return;
+
     const toggleBtn = document.getElementById('toggle-preview-size-btn');
-    const toggleText = document.getElementById('toggle-preview-text');
+    if (!toggleBtn) return;
 
-    if (toggleBtn && toggleText) {
-        // Remove any existing listeners to avoid duplicates
-        const newToggleBtn = toggleBtn.cloneNode(true);
-        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+    toggleBtn.addEventListener('click', () => {
+        const toggleText = document.getElementById('toggle-preview-text');
+        const isExpanded = miniPreviewCanvas.classList.toggle('expanded');
 
-        newToggleBtn.addEventListener('click', () => {
-            const isExpanded = miniPreviewCanvas.classList.toggle('expanded');
+        if (toggleText) {
             toggleText.textContent = isExpanded ? 'Collapse' : 'Expand';
+        }
 
-            // Redraw canvas with new size
-            const maxHeight = isExpanded ? 800 : 400;
-            const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
-            miniPreviewCanvas.width = img.width * scale;
-            miniPreviewCanvas.height = img.height * scale;
-            ctx.drawImage(img, 0, 0, miniPreviewCanvas.width, miniPreviewCanvas.height);
-        });
-    }
+        // Redraw canvas with new size
+        redrawPreviewCanvas();
+    });
+
+    previewToggleSetup = true;
 }
 
 // Start new analysis
@@ -430,6 +440,9 @@ function startNewAnalysis() {
     wordCountDisplay.textContent = '0';
     if (resultsContainer) resultsContainer.innerHTML = '';
     if (exportOutput) exportOutput.innerHTML = '';
+
+    // Reset preview toggle setup flag
+    previewToggleSetup = false;
 
     // Go to capture step
     goToStep('capture');

@@ -60,8 +60,391 @@ header h1 {
     line-height: 1;
 }
 
+/* Breadcrumb Navigation */
+.breadcrumb-nav {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    display: none; /* Hidden initially, shown after setup */
+}
+
+.breadcrumb-nav.visible {
+    display: block;
+}
+
+.breadcrumb-container {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.breadcrumb-step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: #f5f5f5;
+    color: #999;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: not-allowed;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.breadcrumb-step .step-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ddd;
+    color: #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.breadcrumb-step .step-label {
+    white-space: nowrap;
+}
+
+/* Completed step */
+.breadcrumb-step.completed {
+    background: #d4edda;
+    color: #155724;
+    cursor: pointer;
+}
+
+.breadcrumb-step.completed .step-icon {
+    background: #28a745;
+    color: white;
+}
+
+.breadcrumb-step.completed:hover {
+    background: #c3e6cb;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+}
+
+/* Current step */
+.breadcrumb-step.current {
+    background: #667eea;
+    color: white;
+    cursor: default;
+}
+
+.breadcrumb-step.current .step-icon {
+    background: white;
+    color: #667eea;
+}
+
+/* Available step (can be clicked) */
+.breadcrumb-step.available {
+    background: #e7f3ff;
+    color: #0066cc;
+    cursor: pointer;
+}
+
+.breadcrumb-step.available .step-icon {
+    background: #0066cc;
+    color: white;
+}
+
+.breadcrumb-step.available:hover {
+    background: #cce5ff;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.2);
+}
+
+/* Locked step (prerequisites not met) */
+.breadcrumb-step.locked {
+    position: relative;
+}
+
+.breadcrumb-step.locked::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    margin-bottom: 0.5rem;
+    z-index: 1000;
+}
+
+.breadcrumb-step.locked:hover::after {
+    opacity: 1;
+}
+
+.breadcrumb-arrow {
+    color: #ccc;
+    font-size: 1.2rem;
+    user-select: none;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .breadcrumb-container {
+        gap: 0.25rem;
+    }
+
+    .breadcrumb-step {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
+    .breadcrumb-step .step-label {
+        display: none;
+    }
+
+    .breadcrumb-step .step-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 0.875rem;
+    }
+
+    .breadcrumb-arrow {
+        font-size: 1rem;
+    }
+}
+
 main {
     padding: 1rem;
+}
+
+/* Step Header Styles */
+.step-header {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1.5rem;
+    border-radius: 12px;
+    max-width: 700px;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.step-badge {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.step-header h2 {
+    color: #333;
+    font-size: 1.75rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.step-subtitle {
+    color: #666;
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Highlight Instructions */
+.highlight-instructions {
+    background: #fff9e6;
+    border-left: 4px solid #ffc107;
+    padding: 0.75rem 1rem;
+    margin: 0 auto 1rem;
+    max-width: 700px;
+    border-radius: 6px;
+}
+
+.highlight-instructions p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* Requirements Checklist */
+.requirements-checklist {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1rem;
+    border-radius: 8px;
+    max-width: 700px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.requirement-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.req-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.requirement-item.complete .req-icon {
+    color: #28a745;
+}
+
+.requirement-item.incomplete .req-icon {
+    color: #dc3545;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0 0.5rem;
+}
+
+.link-btn:hover {
+    color: #5568d3;
+}
+
+/* Audio Recording Container */
+.audio-recording-container {
+    max-width: 700px;
+    margin: 0 auto 1.5rem;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.image-preview {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.image-preview h4 {
+    color: #667eea;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+#mini-preview-canvas {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.audio-controls-center {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.btn-large {
+    font-size: 1.1rem;
+    padding: 1rem 2rem;
+}
+
+.audio-player-section {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.audio-player-section h4 {
+    color: #28a745;
+    margin-bottom: 1rem;
+}
+
+.audio-player-section audio {
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 1rem;
+}
+
+.audio-actions-inline {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Step Navigation */
+.step-navigation {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 700px;
+    margin: 1.5rem auto;
+}
+
+.step-navigation .btn {
+    min-width: 150px;
+}
+
+/* Results Section */
+.results-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 700px;
+    margin: 0 auto 1.5rem;
+}
+
+.results-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Button Disabled State with Tooltip */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.btn:disabled::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    margin-bottom: 0.5rem;
+    z-index: 1000;
+}
+
+.btn:disabled:hover::after {
+    opacity: 1;
 }
 
 .section {

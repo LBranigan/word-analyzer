@@ -26,7 +26,11 @@ const state = {
     // Analysis results
     latestAnalysis: null,
     latestExpectedWords: null,
-    latestSpokenWords: null
+    latestSpokenWords: null,
+    // Step management
+    currentStep: 'setup',
+    completedSteps: new Set(),
+    stepsOrder: ['setup', 'capture', 'audio', 'highlight', 'results']
 };
 
 // DOM Elements
@@ -66,6 +70,26 @@ const audioPlayer = document.getElementById('audio-player');
 const downloadAudioBtn = document.getElementById('download-audio-btn');
 const analyzeAudioBtn = document.getElementById('analyze-audio-btn');
 
+// New Step Navigation Elements
+const breadcrumbNav = document.getElementById('breadcrumb-nav');
+const audioSection = document.getElementById('audio-section');
+const resultsSection = document.getElementById('results-section');
+const backToCaptureBtn = document.getElementById('back-to-capture-btn');
+const nextToHighlightBtn = document.getElementById('next-to-highlight-btn');
+const backToAudioBtn = document.getElementById('back-to-audio-btn');
+const backToEditBtn = document.getElementById('back-to-edit-btn');
+const startNewAnalysisBtn = document.getElementById('start-new-analysis-btn');
+const goToAudioBtn = document.getElementById('go-to-audio-btn');
+const miniPreviewCanvas = document.getElementById('mini-preview-canvas');
+const audioPlayerMain = document.getElementById('audio-player-main');
+const audioPlayerSection = document.getElementById('audio-player-section');
+const downloadAudioBtnMain = document.getElementById('download-audio-btn-main');
+const rerecordAudioBtn = document.getElementById('rerecord-audio-btn');
+const selectionWordCount = document.getElementById('selection-word-count');
+const reqAudio = document.getElementById('req-audio');
+const reqSelection = document.getElementById('req-selection');
+const resultsContainer = document.getElementById('results-container');
+
 // Initialize
 function init() {
     // Check if API key is already saved
@@ -103,6 +127,22 @@ function init() {
     if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
     if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
     if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
+
+    // Step navigation event listeners
+    if (backToCaptureBtn) backToCaptureBtn.addEventListener('click', () => goToStep('capture'));
+    if (nextToHighlightBtn) nextToHighlightBtn.addEventListener('click', () => goToStep('highlight'));
+    if (backToAudioBtn) backToAudioBtn.addEventListener('click', () => goToStep('audio'));
+    if (backToEditBtn) backToEditBtn.addEventListener('click', () => goToStep('highlight'));
+    if (startNewAnalysisBtn) startNewAnalysisBtn.addEventListener('click', startNewAnalysis);
+    if (goToAudioBtn) goToAudioBtn.addEventListener('click', () => goToStep('audio'));
+    if (rerecordAudioBtn) rerecordAudioBtn.addEventListener('click', openAudioModal);
+    if (downloadAudioBtnMain) downloadAudioBtnMain.addEventListener('click', downloadRecordedAudio);
+
+    // Breadcrumb click handlers
+    setupBreadcrumbClickHandlers();
+
+    // Initialize breadcrumb update
+    updateBreadcrumb();
 }
 
 // Save API Key
@@ -122,8 +162,259 @@ function saveApiKey() {
 function showCameraSection() {
     setupSection.classList.remove('active');
     cameraSection.classList.add('active');
+    state.completedSteps.add('setup');
+    goToStep('capture');
     initCamera();
 }
+
+// ============ STEP MANAGEMENT & NAVIGATION ============
+
+// Navigate to a specific step
+function goToStep(step) {
+    // Update current step
+    state.currentStep = step;
+
+    // Hide all sections
+    setupSection.classList.remove('active');
+    cameraSection.classList.remove('active');
+    audioSection.classList.remove('active');
+    imageSection.classList.remove('active');
+    resultsSection.classList.remove('active');
+
+    // Show the appropriate section
+    const sectionMap = {
+        'setup': setupSection,
+        'capture': cameraSection,
+        'audio': audioSection,
+        'highlight': imageSection,
+        'results': resultsSection
+    };
+
+    const targetSection = sectionMap[step];
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+
+    // Special handling for audio section
+    if (step === 'audio') {
+        updateMiniPreview();
+    }
+
+    // Update breadcrumb and button states
+    updateBreadcrumb();
+    updateButtonStates();
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Update breadcrumb visual state
+function updateBreadcrumb() {
+    // Show breadcrumb after setup
+    if (state.completedSteps.has('setup')) {
+        breadcrumbNav.classList.add('visible');
+    }
+
+    const steps = document.querySelectorAll('.breadcrumb-step');
+    steps.forEach(stepEl => {
+        const stepName = stepEl.getAttribute('data-step');
+        const stepIcon = stepEl.querySelector('.step-icon');
+
+        // Remove all states
+        stepEl.classList.remove('completed', 'current', 'available', 'locked');
+
+        if (state.completedSteps.has(stepName)) {
+            // Completed step
+            stepEl.classList.add('completed');
+            stepIcon.textContent = '✓';
+        } else if (stepName === state.currentStep) {
+            // Current step
+            stepEl.classList.add('current');
+            const stepIndex = state.stepsOrder.indexOf(stepName);
+            stepIcon.textContent = stepIndex;
+        } else if (canAccessStep(stepName)) {
+            // Available step
+            stepEl.classList.add('available');
+            const stepIndex = state.stepsOrder.indexOf(stepName);
+            stepIcon.textContent = stepIndex;
+        } else {
+            // Locked step
+            stepEl.classList.add('locked');
+            const stepIndex = state.stepsOrder.indexOf(stepName);
+            stepIcon.textContent = stepIndex;
+            stepEl.setAttribute('data-tooltip', getStepRequirementMessage(stepName));
+        }
+    });
+}
+
+// Check if a step can be accessed
+function canAccessStep(step) {
+    switch (step) {
+        case 'setup':
+            return true;
+        case 'capture':
+            return state.completedSteps.has('setup');
+        case 'audio':
+            return state.capturedImage !== null;
+        case 'highlight':
+            return state.capturedImage !== null && state.ocrData !== null;
+        case 'results':
+            return state.latestAnalysis !== null;
+        default:
+            return false;
+    }
+}
+
+// Get requirement message for locked steps
+function getStepRequirementMessage(step) {
+    switch (step) {
+        case 'audio':
+            return 'Capture image first';
+        case 'highlight':
+            return 'Capture and process image first';
+        case 'results':
+            return 'Complete analysis first';
+        default:
+            return 'Complete previous steps';
+    }
+}
+
+// Setup click handlers for breadcrumb steps
+function setupBreadcrumbClickHandlers() {
+    const steps = document.querySelectorAll('.breadcrumb-step');
+    steps.forEach(stepEl => {
+        stepEl.addEventListener('click', () => {
+            const stepName = stepEl.getAttribute('data-step');
+            if (canAccessStep(stepName)) {
+                goToStep(stepName);
+            }
+        });
+    });
+}
+
+// Update button states based on requirements
+function updateButtonStates() {
+    // Audio section: Enable next button if audio recorded
+    if (nextToHighlightBtn) {
+        const hasAudio = state.recordedAudioBlob !== null;
+        nextToHighlightBtn.disabled = !hasAudio;
+        if (!hasAudio) {
+            nextToHighlightBtn.setAttribute('data-tooltip', 'Record audio first');
+        } else {
+            nextToHighlightBtn.removeAttribute('data-tooltip');
+        }
+    }
+
+    // Highlight section: Update requirements checklist
+    updateRequirementsChecklist();
+
+    // Enable/disable analyze button
+    if (analyzeAudioBtn) {
+        const canAnalyze = state.recordedAudioBlob !== null &&
+                          state.selectedWords.size > 0 &&
+                          state.ocrData !== null;
+        analyzeAudioBtn.disabled = !canAnalyze;
+        if (!canAnalyze) {
+            let reasons = [];
+            if (!state.recordedAudioBlob) reasons.push('record audio');
+            if (state.selectedWords.size === 0) reasons.push('highlight text');
+            analyzeAudioBtn.setAttribute('data-tooltip', `Please ${reasons.join(' and ')}`);
+        } else {
+            analyzeAudioBtn.removeAttribute('data-tooltip');
+        }
+    }
+}
+
+// Update requirements checklist in highlight section
+function updateRequirementsChecklist() {
+    // Update audio requirement
+    if (reqAudio) {
+        const hasAudio = state.recordedAudioBlob !== null;
+        const audioIcon = reqAudio.querySelector('.req-icon');
+        const audioBtn = reqAudio.querySelector('.link-btn');
+        if (hasAudio) {
+            audioIcon.textContent = '✅';
+            reqAudio.classList.add('complete');
+            reqAudio.classList.remove('incomplete');
+            if (audioBtn) audioBtn.style.display = 'none';
+        } else {
+            audioIcon.textContent = '❌';
+            reqAudio.classList.add('incomplete');
+            reqAudio.classList.remove('complete');
+            if (audioBtn) audioBtn.style.display = 'inline';
+        }
+    }
+
+    // Update selection requirement
+    if (reqSelection) {
+        const hasSelection = state.selectedWords.size > 0;
+        const selIcon = reqSelection.querySelector('.req-icon');
+        if (hasSelection) {
+            selIcon.textContent = '✅';
+            reqSelection.classList.add('complete');
+            reqSelection.classList.remove('incomplete');
+        } else {
+            selIcon.textContent = '❌';
+            reqSelection.classList.add('incomplete');
+            reqSelection.classList.remove('complete');
+        }
+    }
+
+    // Update word count in checklist
+    if (selectionWordCount) {
+        selectionWordCount.textContent = state.selectedWords.size;
+    }
+}
+
+// Update mini preview in audio section
+function updateMiniPreview() {
+    if (!miniPreviewCanvas || !state.capturedImage) return;
+
+    const ctx = miniPreviewCanvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+        const maxWidth = 600;
+        const maxHeight = 200;
+        const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+        miniPreviewCanvas.width = img.width * scale;
+        miniPreviewCanvas.height = img.height * scale;
+        ctx.drawImage(img, 0, 0, miniPreviewCanvas.width, miniPreviewCanvas.height);
+    };
+    img.src = state.capturedImage;
+}
+
+// Start new analysis
+function startNewAnalysis() {
+    // Reset state (except API key)
+    const savedApiKey = state.apiKey;
+    Object.assign(state, {
+        apiKey: savedApiKey,
+        stream: null,
+        capturedImage: null,
+        ocrData: null,
+        selectedWords: new Set(),
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        recordedAudioBlob: null,
+        latestAnalysis: null,
+        latestExpectedWords: null,
+        latestSpokenWords: null,
+        currentStep: 'capture',
+        completedSteps: new Set(['setup'])
+    });
+
+    // Clear displays
+    wordCountDisplay.textContent = '0';
+    if (resultsContainer) resultsContainer.innerHTML = '';
+    if (exportOutput) exportOutput.innerHTML = '';
+
+    // Go to capture step
+    goToStep('capture');
+    initCamera();
+}
+
+// ============ END STEP MANAGEMENT ============
 
 // Initialize Camera
 async function initCamera() {
@@ -189,11 +480,13 @@ function capturePhoto() {
         state.stream.getTracks().forEach(track => track.stop());
     }
 
-    // Switch to image section
-    cameraSection.classList.remove('active');
-    imageSection.classList.add('active');
+    // Mark capture step as complete
+    state.completedSteps.add('capture');
 
-    // Process OCR
+    // Switch to audio section
+    goToStep('audio');
+
+    // Process OCR in background
     processOCR();
 }
 
@@ -301,6 +594,9 @@ async function processOCR() {
         // Draw image and word boxes on canvas
         drawImageWithWords();
         showStatus(`Found ${words.length} words in this image`, '');
+
+        // Update breadcrumb now that OCR is complete
+        updateBreadcrumb();
 
     } catch (error) {
         console.error('Vision API error:', error);
@@ -687,6 +983,8 @@ function resetZoom() {
 
 function updateWordCount() {
     wordCountDisplay.textContent = state.selectedWords.size;
+    // Update button states and requirements checklist
+    updateButtonStates();
 }
 
 function resetSelection() {
@@ -885,11 +1183,30 @@ function updateRecordingTimer() {
 
 function displayRecordedAudio(audioBlob) {
     const url = URL.createObjectURL(audioBlob);
+
+    // Update the main audio player in the audio section
+    if (audioPlayerMain) {
+        audioPlayerMain.src = url;
+        if (audioPlayerSection) {
+            audioPlayerSection.style.display = 'block';
+        }
+    }
+
+    // Also update the old audio player for backward compatibility
     audioPlayer.src = url;
     audioPlaybackSection.classList.add('active');
 
-    // Scroll to audio section
-    audioPlaybackSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Mark audio step as complete
+    state.completedSteps.add('audio');
+
+    // Update button states
+    updateButtonStates();
+    updateBreadcrumb();
+
+    // Scroll to audio section if we're on it
+    if (state.currentStep === 'audio' && audioPlayerSection) {
+        audioPlayerSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 function downloadRecordedAudio() {
@@ -1651,7 +1968,7 @@ function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
     }
 
     exportOutput.innerHTML = `
-        <h3>🎯 Pronunciation Analysis</h3>
+        <h3>🎯 Reading Comprehension Analysis</h3>
         <div class="audio-analysis-result">
             <div class="download-output-section">
                 <button id="download-output-btn" class="btn btn-export">
@@ -1703,17 +2020,37 @@ function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
     // Update word count display
     wordCountDisplay.textContent = correctCount;
 
-    // Add event listener for download button
+    // Also display in the new results section
+    if (resultsContainer) {
+        resultsContainer.innerHTML = exportOutput.innerHTML;
+
+        // Re-attach event listeners for the results section
+        const downloadOutputBtnResults = resultsContainer.querySelector('#download-output-btn');
+        const generateVideoBtnResults = resultsContainer.querySelector('#generate-video-btn');
+
+        if (downloadOutputBtnResults) {
+            downloadOutputBtnResults.addEventListener('click', downloadAnalysisAsPDF);
+        }
+        if (generateVideoBtnResults) {
+            generateVideoBtnResults.addEventListener('click', generateTranscriptVideo);
+        }
+    }
+
+    // Add event listener for download button in export section
     const downloadOutputBtn = document.getElementById('download-output-btn');
     if (downloadOutputBtn) {
         downloadOutputBtn.addEventListener('click', downloadAnalysisAsPDF);
     }
 
-    // Add event listener for video generation button
+    // Add event listener for video generation button in export section
     const generateVideoBtn = document.getElementById('generate-video-btn');
     if (generateVideoBtn) {
         generateVideoBtn.addEventListener('click', generateTranscriptVideo);
     }
+
+    // Mark results as complete and navigate to results section
+    state.completedSteps.add('results');
+    goToStep('results');
 }
 
 // Generate and download analysis as PDF
@@ -1743,7 +2080,7 @@ function downloadAnalysisAsPDF() {
     // Title
     doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text('Pronunciation Analysis Report', margin, yPos);
+    doc.text('Reading Comprehension Analysis Report', margin, yPos);
     yPos += 10;
 
     // Date/Time
@@ -2004,7 +2341,7 @@ function downloadAnalysisAsPDF() {
 
     // Save PDF
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    doc.save(`pronunciation-analysis-${timestamp}.pdf`);
+    doc.save(`reading-comprehension-analysis-${timestamp}.pdf`);
 }
 
 // Generate transcript video with synchronized word highlighting
@@ -2082,7 +2419,7 @@ async function generateTranscriptVideo() {
             // Draw title
             ctx.fillStyle = '#333333';
             ctx.font = 'bold 28px Arial';
-            ctx.fillText('Pronunciation Analysis', padding, 35);
+            ctx.fillText('Reading Comprehension Analysis', padding, 35);
 
             // Draw each word with appropriate highlighting
             ctx.font = `${fontSize}px Arial`;
@@ -2200,7 +2537,7 @@ async function generateTranscriptVideo() {
             const a = document.createElement('a');
             a.href = url;
             const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-            a.download = `pronunciation-video-${timestamp}.webm`;
+            a.download = `reading-comprehension-video-${timestamp}.webm`;
 
             statusDiv.innerHTML = `
                 <div class="video-complete">

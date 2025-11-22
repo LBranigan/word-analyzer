@@ -22,9 +22,39 @@
             </div>
         </header>
 
+        <!-- Breadcrumb Navigation -->
+        <nav id="breadcrumb-nav" class="breadcrumb-nav">
+            <div class="breadcrumb-container">
+                <div class="breadcrumb-step" data-step="setup">
+                    <span class="step-icon">✓</span>
+                    <span class="step-label">Setup</span>
+                </div>
+                <span class="breadcrumb-arrow">→</span>
+                <div class="breadcrumb-step" data-step="capture">
+                    <span class="step-icon">1</span>
+                    <span class="step-label">Capture Image</span>
+                </div>
+                <span class="breadcrumb-arrow">→</span>
+                <div class="breadcrumb-step" data-step="audio">
+                    <span class="step-icon">2</span>
+                    <span class="step-label">Record Audio</span>
+                </div>
+                <span class="breadcrumb-arrow">→</span>
+                <div class="breadcrumb-step" data-step="highlight">
+                    <span class="step-icon">3</span>
+                    <span class="step-label">Highlight Text</span>
+                </div>
+                <span class="breadcrumb-arrow">→</span>
+                <div class="breadcrumb-step" data-step="results">
+                    <span class="step-icon">4</span>
+                    <span class="step-label">Results</span>
+                </div>
+            </div>
+        </nav>
+
         <main>
-            <!-- Audio Playback Section (Always visible when active) -->
-            <section id="audio-playback-section" class="audio-playback-container">
+            <!-- Audio Playback Section (Legacy - hidden by default, audio now in dedicated section) -->
+            <section id="audio-playback-section" class="audio-playback-container" style="display: none;">
                 <h3>Recorded Audio</h3>
                 <audio id="audio-player" controls></audio>
                 <div class="audio-actions">
@@ -65,6 +95,12 @@
 
             <!-- Camera Section -->
             <section id="camera-section" class="section">
+                <div class="step-header">
+                    <div class="step-badge">Step 1</div>
+                    <h2>Capture Image</h2>
+                    <p class="step-subtitle">First, let's capture the text that will be read</p>
+                </div>
+
                 <div class="camera-container">
                     <video id="camera" autoplay playsinline></video>
                     <canvas id="camera-canvas" style="display: none;"></canvas>
@@ -77,27 +113,97 @@
                         <span class="icon">📁</span> Upload Photo
                     </button>
                 </div>
-                <div class="controls">
-                    <button id="record-audio-btn" class="btn btn-audio">
-                        <span class="icon">🎤</span> Record Audio
-                    </button>
-                </div>
 
                 <div class="instructions-box">
-                    <h4>📋 How to Analyze Pronunciation:</h4>
+                    <h4>💡 Quick Guide:</h4>
                     <ol class="instructions-list">
-                        <li>Record audio of someone reading</li>
-                        <li>Capture an image of the text</li>
-                        <li>Highlight the text they read</li>
-                        <li>Click "Analyze Audio" for pronunciation feedback</li>
+                        <li>Take a clear photo of the text to be read</li>
+                        <li>Make sure the text is well-lit and in focus</li>
+                        <li>The image will be processed for word detection</li>
                     </ol>
                 </div>
 
                 <input type="file" id="file-input-camera" accept="image/*" style="display: none;">
             </section>
 
+            <!-- Audio Recording Section -->
+            <section id="audio-section" class="section">
+                <div class="step-header">
+                    <div class="step-badge">Step 2</div>
+                    <h2>Record Audio</h2>
+                    <p class="step-subtitle">Record the student reading the text</p>
+                </div>
+
+                <div class="audio-recording-container">
+                    <div class="image-preview">
+                        <h4>📄 Captured Text Preview</h4>
+                        <canvas id="mini-preview-canvas"></canvas>
+                    </div>
+
+                    <div class="audio-controls-center">
+                        <button id="record-audio-btn" class="btn btn-audio btn-large">
+                            <span class="icon">🎤</span> Record Audio
+                        </button>
+                    </div>
+
+                    <div id="audio-player-section" class="audio-player-section" style="display: none;">
+                        <h4>✅ Recording Complete</h4>
+                        <audio id="audio-player-main" controls></audio>
+                        <div class="audio-actions-inline">
+                            <button id="download-audio-btn-main" class="btn btn-secondary">
+                                <span class="icon">💾</span> Download
+                            </button>
+                            <button id="rerecord-audio-btn" class="btn btn-secondary">
+                                <span class="icon">🔄</span> Re-record
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-navigation">
+                    <button id="back-to-capture-btn" class="btn btn-secondary">
+                        <span class="icon">←</span> Back to Capture
+                    </button>
+                    <button id="next-to-highlight-btn" class="btn btn-primary" disabled>
+                        Next: Highlight Text <span class="icon">→</span>
+                    </button>
+                </div>
+
+                <div class="instructions-box">
+                    <h4>💡 Recording Tips:</h4>
+                    <ul class="instructions-list">
+                        <li>Choose recording duration (1-5 minutes)</li>
+                        <li>Make sure the microphone is working</li>
+                        <li>Record in a quiet environment for best results</li>
+                    </ul>
+                </div>
+            </section>
+
             <!-- Image Processing Section -->
             <section id="image-section" class="section">
+                <div class="step-header">
+                    <div class="step-badge">Step 3</div>
+                    <h2>Highlight Text</h2>
+                    <p class="step-subtitle">Select the words that were read aloud</p>
+                </div>
+
+                <div class="highlight-instructions">
+                    <p><strong>🖱️ How to select:</strong> Drag to highlight words • Right-click to pan • Click yellow words to deselect</p>
+                </div>
+
+                <div class="requirements-checklist">
+                    <div class="requirement-item" id="req-image">
+                        <span class="req-icon">✅</span> Image captured
+                    </div>
+                    <div class="requirement-item" id="req-audio">
+                        <span class="req-icon">❌</span> Audio recorded
+                        <button id="go-to-audio-btn" class="link-btn">Record Now</button>
+                    </div>
+                    <div class="requirement-item" id="req-selection">
+                        <span class="req-icon">❌</span> Text highlighted (<span id="selection-word-count">0</span> words)
+                    </div>
+                </div>
+
                 <div class="image-wrapper">
                     <div class="image-container">
                         <canvas id="selection-canvas"></canvas>
@@ -110,25 +216,23 @@
                 </div>
 
                 <div class="controls">
-                    <button id="record-audio-btn-image" class="btn btn-audio">
-                        <span class="icon">🎤</span> Record Audio
-                    </button>
-                </div>
-                <div class="controls">
-                    <button id="retake-btn" class="btn btn-secondary">
-                        <span class="icon">🔄</span> Retake Photo
-                    </button>
-                    <button id="upload-btn-image" class="btn btn-secondary">
-                        <span class="icon">📁</span> Upload Photo
-                    </button>
-                </div>
-                <div class="controls">
                     <button id="reset-selection-btn" class="btn btn-secondary">
                         <span class="icon">✖️</span> Clear Selection
                     </button>
                 </div>
+
                 <input type="file" id="file-input-image" accept="image/*" style="display: none;">
                 <div id="status" class="status"></div>
+
+                <div class="step-navigation">
+                    <button id="back-to-audio-btn" class="btn btn-secondary">
+                        <span class="icon">←</span> Back to Audio
+                    </button>
+                    <button id="analyze-audio-btn" class="btn btn-primary btn-large" disabled>
+                        <span class="icon">🔍</span> Analyze Reading
+                    </button>
+                </div>
+
                 <div class="export-section">
                     <button id="export-btn" class="btn btn-export">
                         <span class="icon">📋</span> Export Selected Words
@@ -136,11 +240,33 @@
                     <div id="export-output" class="export-output"></div>
                 </div>
             </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="section">
+                <div class="step-header">
+                    <div class="step-badge">✓</div>
+                    <h2>Analysis Results</h2>
+                    <p class="step-subtitle">Reading Comprehension Report</p>
+                </div>
+
+                <div class="results-actions">
+                    <button id="back-to-edit-btn" class="btn btn-secondary">
+                        <span class="icon">←</span> Back to Edit
+                    </button>
+                    <button id="start-new-analysis-btn" class="btn btn-secondary">
+                        <span class="icon">🔄</span> Start New Analysis
+                    </button>
+                </div>
+
+                <div id="results-container" class="results-container">
+                    <!-- Results will be dynamically inserted here -->
+                </div>
+            </section>
         </main>
 
         <footer>
             <p class="hint">👆 Left-click: drag to select words • Right-click: drag to pan image • Click yellow words to deselect</p>
-            <p class="version">Version: 2025-01-21 19:35 UTC</p>
+            <p class="version">Version: 2025-01-22 (Guided UX)</p>
         </footer>
     </div>
 

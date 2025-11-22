@@ -100,15 +100,15 @@ function init() {
     }
 
     // Event listeners
-    saveApiKeyBtn.addEventListener('click', saveApiKey);
-    captureBtn.addEventListener('click', capturePhoto);
-    retakeBtn.addEventListener('click', retakePhoto);
-    resetSelectionBtn.addEventListener('click', resetSelection);
-    exportBtn.addEventListener('click', exportSelectedWords);
-    uploadBtnCamera.addEventListener('click', () => fileInputCamera.click());
-    uploadBtnImage.addEventListener('click', () => fileInputImage.click());
-    fileInputCamera.addEventListener('change', handleFileUpload);
-    fileInputImage.addEventListener('change', handleFileUpload);
+    if (saveApiKeyBtn) saveApiKeyBtn.addEventListener('click', saveApiKey);
+    if (captureBtn) captureBtn.addEventListener('click', capturePhoto);
+    if (retakeBtn) retakeBtn.addEventListener('click', retakePhoto);
+    if (resetSelectionBtn) resetSelectionBtn.addEventListener('click', resetSelection);
+    if (exportBtn) exportBtn.addEventListener('click', exportSelectedWords);
+    if (uploadBtnCamera && fileInputCamera) uploadBtnCamera.addEventListener('click', () => fileInputCamera.click());
+    if (uploadBtnImage && fileInputImage) uploadBtnImage.addEventListener('click', () => fileInputImage.click());
+    if (fileInputCamera) fileInputCamera.addEventListener('change', handleFileUpload);
+    if (fileInputImage) fileInputImage.addEventListener('change', handleFileUpload);
 
     // Audio recording event listeners
     if (recordAudioBtn) recordAudioBtn.addEventListener('click', openAudioModal);

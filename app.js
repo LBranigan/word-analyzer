@@ -389,16 +389,14 @@ function updateMiniPreview() {
         if (modal && modalImg) {
             modalImg.src = state.capturedImage;
             modal.classList.add('active');
+
+            // Close modal when clicking the image
+            modalImg.onclick = (e) => {
+                e.stopPropagation();
+                modal.classList.remove('active');
+            };
         }
     };
-
-    // Close modal when clicked
-    const modal = document.getElementById('image-preview-modal');
-    if (modal) {
-        modal.onclick = () => {
-            modal.classList.remove('active');
-        };
-    }
 }
 
 // Start new analysis
@@ -2047,12 +2045,16 @@ function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
         // Re-attach event listeners for the results section
         const downloadOutputBtnResults = resultsContainer.querySelector('#download-output-btn');
         const generateVideoBtnResults = resultsContainer.querySelector('#generate-video-btn');
+        const statusDivResults = resultsContainer.querySelector('#video-generation-status');
 
         if (downloadOutputBtnResults) {
             downloadOutputBtnResults.addEventListener('click', downloadAnalysisAsPDF);
         }
         if (generateVideoBtnResults) {
-            generateVideoBtnResults.addEventListener('click', generateTranscriptVideo);
+            generateVideoBtnResults.addEventListener('click', async function() {
+                // Call generateTranscriptVideo with results container context
+                await generateTranscriptVideoInContainer(resultsContainer);
+            });
         }
     }
 
@@ -2068,7 +2070,8 @@ function displayPronunciationResults(expectedWords, spokenWordInfo, analysis) {
         generateVideoBtn.addEventListener('click', generateTranscriptVideo);
     }
 
-    // Mark results as complete and navigate to results section
+    // Mark highlight and results as complete and navigate to results section
+    state.completedSteps.add('highlight');
     state.completedSteps.add('results');
     goToStep('results');
 }
@@ -2365,14 +2368,37 @@ function downloadAnalysisAsPDF() {
 }
 
 // Generate transcript video with synchronized word highlighting
-async function generateTranscriptVideo() {
+// Generate transcript video (with optional container for scoped element lookup)
+async function generateTranscriptVideoInContainer(container) {
     if (!state.latestAnalysis || !state.latestSpokenWords || !state.recordedAudioBlob) {
         alert('No analysis data or audio available');
         return;
     }
 
-    const statusDiv = document.getElementById('video-generation-status');
-    const generateBtn = document.getElementById('generate-video-btn');
+    // Use container scope if provided, otherwise use document
+    const scope = container || document;
+    const statusDiv = scope.querySelector('#video-generation-status');
+    const generateBtn = scope.querySelector('#generate-video-btn');
+
+    if (!statusDiv || !generateBtn) {
+        console.error('Video generation elements not found');
+        return;
+    }
+
+    return await generateTranscriptVideoCore(statusDiv, generateBtn);
+}
+
+// Legacy wrapper for backward compatibility
+async function generateTranscriptVideo() {
+    return await generateTranscriptVideoInContainer(document);
+}
+
+// Core video generation logic
+async function generateTranscriptVideoCore(statusDiv, generateBtn) {
+    if (!state.latestAnalysis || !state.latestSpokenWords || !state.recordedAudioBlob) {
+        alert('No analysis data or audio available');
+        return;
+    }
 
     try {
         generateBtn.disabled = true;

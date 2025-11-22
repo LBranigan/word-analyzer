@@ -58,10 +58,10 @@
                 <h3>Recorded Audio</h3>
                 <audio id="audio-player" controls></audio>
                 <div class="audio-actions">
-                    <button id="download-audio-btn" class="btn btn-secondary">
+                    <button id="download-audio-btn-legacy" class="btn btn-secondary">
                         <span class="icon">💾</span> Download Audio
                     </button>
-                    <button id="analyze-audio-btn" class="btn btn-primary">
+                    <button id="analyze-audio-btn-legacy" class="btn btn-primary">
                         <span class="icon">🔍</span> Analyze Audio
                     </button>
                 </div>
@@ -191,19 +191,6 @@
                     <p><strong>🖱️ How to select:</strong> Drag to highlight words • Right-click to pan • Click yellow words to deselect</p>
                 </div>
 
-                <div class="requirements-checklist">
-                    <div class="requirement-item" id="req-image">
-                        <span class="req-icon">✅</span> Image captured
-                    </div>
-                    <div class="requirement-item" id="req-audio">
-                        <span class="req-icon">❌</span> Audio recorded
-                        <button id="go-to-audio-btn" class="link-btn">Record Now</button>
-                    </div>
-                    <div class="requirement-item" id="req-selection">
-                        <span class="req-icon">❌</span> Text highlighted (<span id="selection-word-count">0</span> words)
-                    </div>
-                </div>
-
                 <div class="image-wrapper">
                     <div class="image-container">
                         <canvas id="selection-canvas"></canvas>
@@ -299,6 +286,11 @@
             </div>
             <button id="stop-recording-btn" class="btn btn-danger btn-stop-compact">Stop</button>
         </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="image-preview-modal" class="image-preview-modal">
+        <img id="image-preview-img" src="" alt="Full size preview">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

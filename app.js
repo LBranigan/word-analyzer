@@ -373,14 +373,32 @@ function updateMiniPreview() {
     const ctx = miniPreviewCanvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
-        const maxWidth = 600;
-        const maxHeight = 200;
+        const maxWidth = 700;
+        const maxHeight = 400;
         const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
         miniPreviewCanvas.width = img.width * scale;
         miniPreviewCanvas.height = img.height * scale;
         ctx.drawImage(img, 0, 0, miniPreviewCanvas.width, miniPreviewCanvas.height);
     };
     img.src = state.capturedImage;
+
+    // Add click-to-expand functionality
+    miniPreviewCanvas.onclick = () => {
+        const modal = document.getElementById('image-preview-modal');
+        const modalImg = document.getElementById('image-preview-img');
+        if (modal && modalImg) {
+            modalImg.src = state.capturedImage;
+            modal.classList.add('active');
+        }
+    };
+
+    // Close modal when clicked
+    const modal = document.getElementById('image-preview-modal');
+    if (modal) {
+        modal.onclick = () => {
+            modal.classList.remove('active');
+        };
+    }
 }
 
 // Start new analysis

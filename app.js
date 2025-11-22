@@ -111,13 +111,13 @@ function init() {
     fileInputImage.addEventListener('change', handleFileUpload);
 
     // Audio recording event listeners
-    recordAudioBtn.addEventListener('click', openAudioModal);
-    recordAudioBtnImage.addEventListener('click', openAudioModal);
-    startRecordingBtn.addEventListener('click', startRecording);
-    cancelRecordingBtn.addEventListener('click', closeAudioModal);
-    stopRecordingBtn.addEventListener('click', stopRecording);
-    downloadAudioBtn.addEventListener('click', downloadRecordedAudio);
-    analyzeAudioBtn.addEventListener('click', analyzeRecordedAudio);
+    if (recordAudioBtn) recordAudioBtn.addEventListener('click', openAudioModal);
+    if (recordAudioBtnImage) recordAudioBtnImage.addEventListener('click', openAudioModal);
+    if (startRecordingBtn) startRecordingBtn.addEventListener('click', startRecording);
+    if (cancelRecordingBtn) cancelRecordingBtn.addEventListener('click', closeAudioModal);
+    if (stopRecordingBtn) stopRecordingBtn.addEventListener('click', stopRecording);
+    if (downloadAudioBtn) downloadAudioBtn.addEventListener('click', downloadRecordedAudio);
+    if (analyzeAudioBtn) analyzeAudioBtn.addEventListener('click', analyzeRecordedAudio);
 
     // Zoom controls event listeners
     const zoomInBtn = document.getElementById('zoom-in-btn');
@@ -453,11 +453,13 @@ function handleFileUpload(e) {
             state.stream.getTracks().forEach(track => track.stop());
         }
 
-        // Switch to image section
-        cameraSection.classList.remove('active');
-        imageSection.classList.add('active');
+        // Mark capture step as complete
+        state.completedSteps.add('capture');
 
-        // Process OCR
+        // Switch to audio section
+        goToStep('audio');
+
+        // Process OCR in background
         processOCR();
     };
     reader.readAsDataURL(file);
@@ -2580,4 +2582,8 @@ async function generateTranscriptVideo() {
 }
 
 // Initialize on load
-init();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

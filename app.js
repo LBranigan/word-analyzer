@@ -789,8 +789,20 @@ async function startRecording() {
             }
         });
 
-        // Initialize MediaRecorder
-        state.mediaRecorder = new MediaRecorder(state.audioStream);
+        // Initialize MediaRecorder with lower bitrate to keep file size manageable
+        // Google Speech-to-Text has a 10MB limit for synchronous recognition
+        const options = {
+            mimeType: 'audio/webm;codecs=opus',
+            audioBitsPerSecond: 64000  // 64 kbps - good quality for speech, small file size
+        };
+
+        // Check if the browser supports the specified codec
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            // Fallback to default if opus not supported
+            delete options.mimeType;
+        }
+
+        state.mediaRecorder = new MediaRecorder(state.audioStream, options);
         state.audioChunks = [];
         state.recordingDuration = duration * 60; // Convert to seconds
 
@@ -945,11 +957,17 @@ async function analyzeRecordedAudio() {
                 console.log('Audio blob type:', state.recordedAudioBlob.type);
                 console.log('Base64 audio length:', base64Audio.length);
 
+                // Check file size (Google has ~10MB limit for synchronous recognition)
+                const fileSizeMB = state.recordedAudioBlob.size / (1024 * 1024);
+                if (fileSizeMB > 9.5) {
+                    throw new Error(`Audio file too large (${fileSizeMB.toFixed(1)}MB). Please record shorter audio or reduce quality.`);
+                }
+
                 // Prepare API request
                 const requestBody = {
                     config: {
                         encoding: 'WEBM_OPUS',
-                        sampleRateHertz: 48000,  // Match browser's default recording rate
+                        // sampleRateHertz: 48000,  // Omit this to let API auto-detect
                         languageCode: 'en-US',
                         enableAutomaticPunctuation: true,
                         enableWordConfidence: true,

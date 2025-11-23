@@ -1140,11 +1140,12 @@ async function startRecording() {
             }
         });
 
-        // Initialize MediaRecorder with lower bitrate to keep file size manageable
-        // Google Speech-to-Text has a 10MB limit for synchronous recognition
+        // Initialize MediaRecorder with low bitrate to keep file size small
+        // Google Speech-to-Text inline audio has practical limits around 40-50 seconds
+        // Lower bitrate = smaller files = more reliable processing
         const options = {
             mimeType: 'audio/webm;codecs=opus',
-            audioBitsPerSecond: 64000  // 64 kbps - good quality for speech, small file size
+            audioBitsPerSecond: 32000  // 32 kbps - sufficient quality for speech recognition
         };
 
         // Check if the browser supports the specified codec
@@ -1403,63 +1404,30 @@ async function analyzeRecordedAudio() {
 
                 console.log('Sending request to Speech-to-Text API...');
 
-                // Use Long Running Recognize for audio >= 50 seconds OR large file size
-                // Google's synchronous API has limits on both duration (60s) and inline content size
-                // Base64 encoding increases size by ~33%, and inline audio has practical limits around 50-55 seconds
-                const useLongRunning = state.recordingDuration >= 50 || fileSizeMB > 5;
-                console.log('API Selection - Use Long Running?:', useLongRunning);
-                console.log('Reason: Duration =', state.recordingDuration, 's, File size =', fileSizeMB.toFixed(2), 'MB');
-                let data;
-
-                if (useLongRunning) {
-                    console.log('Using Long Running Recognize API (audio >= 50s or large file)');
-                    showStatus('Processing audio file... This may take a moment.', 'processing');
-
-                    // Call Long Running Recognize API
-                    const longRunningResponse = await fetch(
-                        `https://speech.googleapis.com/v1/speech:longrunningrecognize?key=${state.apiKey}`,
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestBody)
-                        }
-                    );
-
-                    const operationData = await longRunningResponse.json();
-                    console.log('Long Running Operation Response:', operationData);
-
-                    if (operationData.error) {
-                        throw new Error(operationData.error.message || 'Error starting long running operation');
-                    }
-
-                    if (!operationData.name) {
-                        throw new Error('No operation name returned from API');
-                    }
-
-                    // Poll for results
-                    data = await pollLongRunningOperation(operationData.name, state.apiKey);
-                } else {
-                    console.log('Using synchronous Recognize API for audio < 50 seconds');
-                    // Call synchronous Speech-to-Text API with word-level details
-                    const response = await fetch(
-                        `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestBody)
-                        }
-                    );
-
-                    console.log('Response status:', response.status);
-                    console.log('Response headers:', response.headers);
-
-                    data = await response.json();
-                    console.log('API Response:', data);
+                // Note: Google's Long Running Recognize API requires GCS URI (not base64)
+                // So we only use synchronous API with inline base64 audio
+                // Practical limits: ~40-50 seconds for reliable inline audio processing
+                if (state.recordingDuration > 45) {
+                    showStatus('Warning: Audio longer than 45 seconds may fail. Processing...', 'processing');
                 }
+
+                // Call synchronous Speech-to-Text API with word-level details
+                const response = await fetch(
+                    `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    }
+                );
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                console.log('API Response:', data);
 
                 if (data.error) {
                     console.error('API Error:', data.error);
@@ -1470,6 +1438,8 @@ async function analyzeRecordedAudio() {
                         errorMessage = 'Invalid API key or Speech-to-Text API not enabled. Please enable the Cloud Speech-to-Text API in your Google Cloud Console.';
                     } else if (errorMessage.includes('PERMISSION_DENIED')) {
                         errorMessage = 'Speech-to-Text API is not enabled. Please enable it in Google Cloud Console.';
+                    } else if (errorMessage.includes('duration limit') || errorMessage.includes('Inline audio exceeds') || errorMessage.includes('GCS URI')) {
+                        errorMessage = 'Audio recording too long for inline processing. Please record for 30 seconds instead, or use a shorter passage.';
                     } else if (errorMessage.includes('audio')) {
                         errorMessage = 'Audio format error: ' + errorMessage;
                     }

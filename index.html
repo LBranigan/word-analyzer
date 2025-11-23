@@ -265,10 +265,11 @@
         <div class="modal-content">
             <h2>Record Audio</h2>
             <p>How long would you like to record?</p>
+            <p class="duration-note">⚠️ For best results, use 30 seconds. Longer recordings may fail due to API limits.</p>
             <div class="duration-input">
                 <select id="audio-duration">
-                    <option value="0.5">30 seconds</option>
-                    <option value="1" selected>1 minute</option>
+                    <option value="0.5" selected>30 seconds (recommended)</option>
+                    <option value="1">1 minute</option>
                     <option value="2">2 minutes</option>
                 </select>
             </div>

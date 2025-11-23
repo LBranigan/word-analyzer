@@ -264,14 +264,26 @@
     <div id="audio-modal" class="modal">
         <div class="modal-content">
             <h2>Record Audio</h2>
-            <p>How long would you like to record?</p>
-            <p class="duration-note">⚠️ For best results, use 30 seconds. Longer recordings may fail due to API limits.</p>
-            <div class="duration-input">
-                <select id="audio-duration">
-                    <option value="0.5" selected>30 seconds (recommended)</option>
-                    <option value="1">1 minute</option>
-                    <option value="2">2 minutes</option>
-                </select>
+            <p>Configure your recording settings:</p>
+            <p class="duration-note">⚠️ Best results: 30 seconds at 32 kbps. Longer/higher quality may fail due to API limits.</p>
+            <div class="recording-settings">
+                <div class="setting-group">
+                    <label for="audio-duration">Duration:</label>
+                    <select id="audio-duration">
+                        <option value="0.5" selected>30 seconds</option>
+                        <option value="1">1 minute</option>
+                        <option value="2">2 minutes</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="audio-bitrate">Audio Quality:</label>
+                    <select id="audio-bitrate">
+                        <option value="16000">16 kbps (low - ~60 KB/30s)</option>
+                        <option value="32000" selected>32 kbps (recommended - ~120 KB/30s)</option>
+                        <option value="64000">64 kbps (high - ~240 KB/30s)</option>
+                        <option value="128000">128 kbps (very high - ~480 KB/30s)</option>
+                    </select>
+                </div>
             </div>
             <div class="modal-buttons">
                 <button id="start-recording-btn" class="btn btn-primary">Start Recording</button>

@@ -60,6 +60,7 @@ const recordAudioBtnImage = document.getElementById('record-audio-btn-image');
 const audioModal = document.getElementById('audio-modal');
 const recordingModal = document.getElementById('recording-modal');
 const audioDurationInput = document.getElementById('audio-duration');
+const audioBitrateInput = document.getElementById('audio-bitrate');
 const startRecordingBtn = document.getElementById('start-recording-btn');
 const cancelRecordingBtn = document.getElementById('cancel-recording-btn');
 const stopRecordingBtn = document.getElementById('stop-recording-btn');
@@ -1140,12 +1141,15 @@ async function startRecording() {
             }
         });
 
-        // Initialize MediaRecorder with low bitrate to keep file size small
+        // Initialize MediaRecorder with user-selected bitrate
         // Google Speech-to-Text inline audio has practical limits around 40-50 seconds
         // Lower bitrate = smaller files = more reliable processing
+        const selectedBitrate = parseInt(audioBitrateInput.value);
+        console.log('Recording with bitrate:', selectedBitrate, 'bps');
+
         const options = {
             mimeType: 'audio/webm;codecs=opus',
-            audioBitsPerSecond: 32000  // 32 kbps - sufficient quality for speech recognition
+            audioBitsPerSecond: selectedBitrate
         };
 
         // Check if the browser supports the specified codec
@@ -1781,6 +1785,8 @@ function analyzePronunciation(expectedWords, spokenWordInfo) {
                     spoken: spoken.word,
                     status: 'correct',
                     confidence: spoken.confidence,
+                    startTime: spoken.startTime,
+                    endTime: spoken.endTime,
                     index: i - 1
                 });
                 analysis.correctCount++;
@@ -1791,6 +1797,8 @@ function analyzePronunciation(expectedWords, spokenWordInfo) {
                     status: 'misread',
                     errorType: 'misread_word',
                     confidence: spoken.confidence,
+                    startTime: spoken.startTime,
+                    endTime: spoken.endTime,
                     index: i - 1
                 });
                 analysis.errors.misreadWords.push({
@@ -2498,7 +2506,8 @@ async function generateTranscriptVideoCore(statusDiv, generateBtn) {
                 width: wordWidth,
                 status: item.status,
                 spoken: item.spoken,
-                spokenWord: spokenWords[index] || null
+                startTime: item.startTime,
+                endTime: item.endTime
             });
 
             xPos += wordWidth;
@@ -2525,14 +2534,13 @@ async function generateTranscriptVideoCore(statusDiv, generateBtn) {
             ctx.font = `${fontSize}px Arial`;
 
             wordLayouts.forEach(layout => {
-                const spokenWord = layout.spokenWord;
                 let color = '#cccccc'; // Default: not yet spoken
                 let isCurrentWord = false;
 
                 // Check if this word is being spoken right now
-                if (spokenWord && spokenWord.startTime && spokenWord.endTime) {
-                    const startTime = parseFloat(spokenWord.startTime.replace('s', ''));
-                    const endTime = parseFloat(spokenWord.endTime.replace('s', ''));
+                if (layout.startTime && layout.endTime) {
+                    const startTime = parseFloat(layout.startTime.replace('s', ''));
+                    const endTime = parseFloat(layout.endTime.replace('s', ''));
 
                     if (currentTime >= startTime && currentTime <= endTime) {
                         isCurrentWord = true;

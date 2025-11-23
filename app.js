@@ -1403,15 +1403,17 @@ async function analyzeRecordedAudio() {
 
                 console.log('Sending request to Speech-to-Text API...');
 
-                // Use Long Running Recognize for audio 60 seconds or longer (>= 60)
-                // Google's synchronous API only supports audio up to 60 seconds
-                const useLongRunning = state.recordingDuration >= 60;
+                // Use Long Running Recognize for audio >= 50 seconds OR large file size
+                // Google's synchronous API has limits on both duration (60s) and inline content size
+                // Base64 encoding increases size by ~33%, and inline audio has practical limits around 50-55 seconds
+                const useLongRunning = state.recordingDuration >= 50 || fileSizeMB > 5;
                 console.log('API Selection - Use Long Running?:', useLongRunning);
+                console.log('Reason: Duration =', state.recordingDuration, 's, File size =', fileSizeMB.toFixed(2), 'MB');
                 let data;
 
                 if (useLongRunning) {
-                    console.log('Using Long Running Recognize API for audio >= 60 seconds');
-                    showStatus('Processing long audio file... This may take a moment.', 'processing');
+                    console.log('Using Long Running Recognize API (audio >= 50s or large file)');
+                    showStatus('Processing audio file... This may take a moment.', 'processing');
 
                     // Call Long Running Recognize API
                     const longRunningResponse = await fetch(
@@ -1439,7 +1441,7 @@ async function analyzeRecordedAudio() {
                     // Poll for results
                     data = await pollLongRunningOperation(operationData.name, state.apiKey);
                 } else {
-                    console.log('Using synchronous Recognize API for audio <= 60 seconds');
+                    console.log('Using synchronous Recognize API for audio < 50 seconds');
                     // Call synchronous Speech-to-Text API with word-level details
                     const response = await fetch(
                         `https://speech.googleapis.com/v1/speech:recognize?key=${state.apiKey}`,

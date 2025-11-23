@@ -641,7 +641,6 @@ async function processOCR() {
 
         // Draw image and word boxes on canvas
         drawImageWithWords();
-        showStatus(`Found ${words.length} words in this image`, '');
 
         // Update breadcrumb now that OCR is complete
         updateBreadcrumb();

@@ -1285,50 +1285,6 @@ function downloadRecordedAudio() {
     alert('Audio file downloaded successfully!');
 }
 
-// Helper function to poll for long-running operation results
-async function pollLongRunningOperation(operationName, apiKey) {
-    const maxAttempts = 60; // Poll for up to 5 minutes (60 attempts * 5 seconds)
-    const pollInterval = 5000; // Poll every 5 seconds
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        console.log(`Polling attempt ${attempt + 1}/${maxAttempts} for operation: ${operationName}`);
-
-        const response = await fetch(
-            `https://speech.googleapis.com/v1/operations/${operationName}?key=${apiKey}`,
-            {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            }
-        );
-
-        const operation = await response.json();
-        console.log('Operation status:', operation);
-
-        if (operation.error) {
-            throw new Error(operation.error.message || 'Error in long running operation');
-        }
-
-        // Check if operation is done
-        if (operation.done) {
-            console.log('Operation completed successfully');
-            if (!operation.response) {
-                throw new Error('Operation completed but no response data received');
-            }
-            return operation.response;
-        }
-
-        // Wait before next poll
-        if (attempt < maxAttempts - 1) {
-            showStatus(`Processing audio... (${attempt + 1}/${maxAttempts})`, 'processing');
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-        }
-    }
-
-    throw new Error('Operation timed out. Please try again with shorter audio or contact support.');
-}
-
 async function analyzeRecordedAudio() {
     if (!state.recordedAudioBlob) {
         alert('No audio recording available');
